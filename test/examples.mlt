@@ -1,0 +1,39 @@
+module Position_for_polymorphic_variant_errors = struct
+  type t1 = [ `A ] [@@deriving of_yojson]
+  type t2 = [ `B ] [@@deriving of_yojson]
+  type t3 = A of [ t1 | t2 ] [@@deriving of_yojson]
+
+  let (_ : t3) = t3_of_yojson (`List [ `String "A"; `String "C" ])
+end
+
+[%%expect
+  {|
+Exception:
+(Of_yojson_error
+ (Failure
+  "examples.mlt.Position_for_polymorphic_variant_errors.t1_of_yojson: unexpected sum tag")
+ "\"C\"").
+|}]
+
+let _ = [%yojson_of: 'a]
+
+[%%expect
+  {|
+Line _, characters 21-23:
+Error: Type variables not allowed in [%yojson_of: ]. Please use locally abstract types instead.
+|}]
+
+let _ = [%of_yojson: 'a]
+
+[%%expect
+  {|
+Line _, characters 21-23:
+Error: Type variables not allowed in [%of_yojson: ]. Please use locally abstract types instead.
+|}]
+
+let _ = [%yojson (() : 'a)]
+
+[%%expect {|
+Line _, characters 10-16:
+Error: Extension `yojson' was not translated
+|}]

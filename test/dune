@@ -1,0 +1,4 @@
+(library (name ppx_yojson_conv_test)
+ (libraries base expect_test_helpers_kernel base_yojson)
+ (flags :standard -w -30)
+ (preprocess (pps ppx_jane ppx_yojson_conv ppx_compare)))

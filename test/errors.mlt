@@ -1,0 +1,163 @@
+open Base_yojson
+
+type t = int [@@deriving yojson] [@@yojson.allow_extra_fields]
+
+[%%expect
+  {|
+Line _, characters 0-62:
+Error: ppx_yojson_conv: [@@allow_extra_fields] is only allowed on records.
+|}]
+
+type 'a t = 'a option =
+  | None
+  | Some of 'a
+[@@deriving yojson] [@@yojson.allow_extra_fields]
+
+[%%expect
+  {|
+Line _, characters 0-97:
+Error: ppx_yojson_conv: [@@allow_extra_fields] is only allowed on records.
+|}]
+
+type 'a t = Some of { a : int } [@@deriving yojson] [@@yojson.allow_extra_fields]
+
+[%%expect
+  {|
+Line _, characters 0-81:
+Error: ppx_yojson_conv: [@@allow_extra_fields] only works on records. For inline records, do: type t = A of { a : int } [@allow_extra_fields] | B [@@deriving yojson]
+|}]
+
+type 'a t =
+  | Some of { a : int }
+  | None [@yojson.allow_extra_fields]
+[@@deriving yojson]
+
+[%%expect
+  {|
+Line _, characters 0-93:
+Error: ppx_yojson_conv: [@allow_extra_fields] is only allowed on inline records.
+|}]
+
+type t =
+  | Non
+  | Som of { next : t [@default Non] [@yojson_drop_default.equal] }
+[@@deriving yojson]
+
+[%%expect
+  {|
+Line _, characters 20-21:
+Error: [@yojson_drop_default.equal] was used, but the type of the field contains a type defined in the current recursive block: t.
+This is not supported.
+Consider using [@yojson_drop_if _] or [@yojson_drop_default.yojson] instead.
+|}]
+
+type nonrec 'a t = { foo : 'a option [@default None] [@yojson_drop_default.equal] }
+[@@deriving yojson]
+
+[%%expect
+  {|
+Line _, characters 27-36:
+Error: [@yojson_drop_default.equal] was used, but the type of the field contains a type variable: 'a.
+Comparison is not avaiable for type variables.
+Consider using [@yojson_drop_if _] or [@yojson_drop_default.yojson] instead.
+|}]
+
+open Base
+
+type t = { a : int [@default 8] [@yojson_drop_default] } [@@deriving yojson_of]
+
+[%%expect
+  {|
+Line _, characters 15-18:
+Error (Warning 22): [@yojson_drop_default] is deprecated: please use one of:
+- [@yojson_drop_default f] and give an explicit equality function ([f = Poly.(=)] corresponds to the old behavior)
+- [@yojson_drop_default.compare] if the type supports [%compare]
+- [@yojson_drop_default.equal] if the type supports [%equal]
+- [@yojson_drop_default.yojson] if you want to compare the yojson representations
+|}]
+
+type t = { x : unit [@yojson.opaque] } [@@deriving yojson_of]
+
+type t = { x : unit [@yojson.opaque] } [@@deriving of_yojson]
+
+[%%expect
+  {|
+Line _, characters 22-35:
+Error: Attribute `yojson.opaque' was not used.
+Hint: `yojson.opaque' is available for core types but is used here in the
+context of a label declaration.
+Did you put it at the wrong level?
+Line _, characters 22-35:
+Error: Attribute `yojson.opaque' was not used.
+Hint: `yojson.opaque' is available for core types but is used here in the
+context of a label declaration.
+Did you put it at the wrong level?
+|}]
+
+type t = { x : unit [@yojson.option] } [@@deriving yojson_of]
+
+type t = { x : unit [@yojson.option] } [@@deriving of_yojson]
+
+[%%expect
+  {|
+Line _, characters 11-12:
+Error: ppx_yojson_conv: [@yojson.option] is only allowed on type [_ option].
+Line _, characters 11-12:
+Error: ppx_yojson_conv: [@yojson.option] is only allowed on type [_ option].
+|}]
+
+type t = int [@@deriving yojson_fields]
+
+[%%expect
+  {|
+Line _, characters 0-39:
+Error: ppx_yojson_conv: yojson_fields only works on records
+|}]
+
+type t = A [@@deriving yojson_fields]
+
+[%%expect
+  {|
+Line _, characters 0-37:
+Error: ppx_yojson_conv: yojson_fields only works on records
+|}]
+
+type t =
+  [ `A
+  | `B
+  ]
+[@@deriving yojson_fields]
+
+[%%expect
+  {|
+Line _, characters 0-53:
+Error: ppx_yojson_conv: yojson_fields only works on records
+|}]
+
+type t = int * int [@@deriving yojson_fields]
+
+[%%expect
+  {|
+Line _, characters 0-45:
+Error: ppx_yojson_conv: yojson_fields only works on records
+|}]
+
+type t = { x : u }
+
+and vvv = int
+
+and u = { y : t } [@@deriving yojson_fields]
+
+[%%expect
+  {|
+Line _, characters 0-13:
+Error: ppx_yojson_conv: yojson_fields only works on records
+|}]
+
+type t = string list [@@deriving yojson_fields]
+
+[%%expect
+  {|
+Line _, characters 0-47:
+Error: ppx_yojson_conv: yojson_fields only works on records
+|}]

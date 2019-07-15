@@ -1,0 +1,386 @@
+#+TITLE: ppx\_yojson\_conv
+
+* [@@deriving yojson]
+
+=ppx_yojson_conv= is a PPX syntax extension that generates code for
+converting OCaml types to and from Yojson.Safe, as defined in the
+[[https://github.com/janestreet/sexplib][=yojson=]] library.  Yojson.Safe are defined by the following type:
+
+#+begin_src ocaml
+type t =
+    [ `Null
+    | `Bool of bool
+    | `Int of int
+    | `Intlit of string
+    | `Float of float
+    | `String of string
+    | `Assoc of (string * t) list
+    | `List of t list
+    | `Tuple of t list
+    | `Variant of string * t option
+]
+#+end_src
+
+and are rendered as normal json format.
+
+=ppx_yojson_conv= fits into the [[https://github.com/whitequark/ppx_deriving][=ppx_deriving=]] framework, so you can
+invoke it the same way you invoke any other deriving plug-in.  Thus,
+we can write
+
+#+begin_src ocaml
+type int_pair = (int * int) [@@deriving yojson]
+#+end_src
+
+to get two values defined automatically, =yojson_of_int_pair= and
+=int_pair_of_yojson=.  If we only want one direction, we can write one
+of the following.
+
+#+begin_src ocaml
+type int_pair = (int * int) [@@deriving yojson_of]
+type int_pair = (int * int) [@@deriving of_yojson]
+#+end_src
+
+Note that Yojson-converters for primitive types are brought into scope
+automatically. The ppx rewriter adds the following prefix at the top of
+implementations =open! Ppx_yojson_conv_lib.Yojson_conv.Primitives=
+
+It's also possible to construct converters based on type expressions,
+/i.e./:
+
+#+begin_src ocaml
+  [%yojson_of: (int * string) list] [1,"one"; 2,"two"]
+  |> Yojson.Safe.to_string;;
+  => {|[[1,"one"],[2,"two"]]|}
+
+  [%yojson_of: (int * string) list] [1,"one"; 2,"two"]
+  |> [%of_yojson: (int * string) list];;
+  => [1,"one"; 2,"two"]
+#+end_src
+
+For =%yojson_of=, we can also omit the conversion of some types by
+putting underscores for that type name.
+
+#+begin_src ocaml
+  [%yojson_of: (int * _) list] [1,"one"; 2,"two"]
+  |> Yojson.Safe.to_string;;
+  => {|[[1,"_"],[2,"_"]]|}
+#+end_src
+
+** Conversion rules
+
+In the following, we'll review the serialization rules for different
+OCaml types.
+
+*** Basic types
+
+For numbers like =int=,
+=int32=, =int64=, the value is stored as =`Int value=.
+For =float= number, the value is stored as =`Float value=.
+For the types =char= or =string=, the value is stored as =`String str= where =str= is
+respectively a one character string or the string itself.
+
+*** Lists and arrays
+
+OCaml-lists and arrays are represented as Yojson.Safe lists.
+
+*** Tuples and unit
+
+OCaml tuples are treated as lists of values in the same order as in
+the tuple.  The type =unit= is treated as Yojson =`Null=.  /e.g./:
+
+#+begin_src ocaml
+  (3.14, "foo", "bar bla", 27)  =>  [3.14, "foo", "bar bla", 27]
+#+end_src
+
+*** Options
+
+With options, =None= is treated as Yojson =`Null=, and =Some= is
+treated as the value contained, as shown below.
+
+#+begin_src ocaml
+None        =>  `Null
+Some value  =>  value
+#+end_src
+
+The rules for variants are described below.
+
+*** Records
+
+Records are represented as Yojson =`Assoc (string * t) list=, where item of the list is a
+key-value pair. Each pair consists of the name of the record field
+(first element), and its value (second element).  /e.g./:
+
+#+begin_src ocaml
+  { foo = (3,4);
+    bar = "some string"; }
+  =>  {"foo":[3,4],"bar":"some string"}
+#+end_src
+
+Type specifications of records allow the use of several attributes. The
+attribute =yojson.option= indicates that a record field should be optional.
+/e.g./:
+
+#+begin_src ocaml
+  type t =
+    { x : int option;
+      y : int option [@yojson.option];
+    } [@@deriving yojson]
+#+end_src
+
+The following examples show how this works.
+
+#+begin_src ocaml
+  { x = Some 1; y = Some 2; } => {"x":1,"y":2}
+  { x = None  ; y = None;   } => {"x":null}
+#+end_src
+
+
+When the JSON object keys differ from the ocaml field names, users can
+specify the corresponding JSON key implicitly using =[@key "field"]=,
+for example:
+
+#+begin_src ocaml
+type t = {
+  typ    : float [@key "type"];
+  class_ : float [@key "CLASS"];
+}
+[@@deriving yojson, yojson_fields]
+#+end_src
+
+The =yojson_fields= attribute generates the list of JSON keys from a
+record type, for example:
+#+begin_src ocaml
+type ty = {
+  x : float [@key "a"];
+  y : float [@key "b"];
+  z : float
+}
+[@@deriving yojson_fields]
+#+end_src
+generates the list below, and the list will not be generated for the signature.
+#+begin_src ocaml
+yojson_fields_of_ty = ["a"; "b"; "z"]
+#+end_src
+
+Note that ppx_deriving_yojson support duplicated fields, while our library does not.
+
+**** Defaults
+
+More complex default values can be specified explicitly using several
+constructs, /e.g./:
+
+#+begin_src ocaml
+  type t =
+    { a : int [@default 42];
+      b : int [@default 3] [@yojson_drop_default (=)];
+      c : int [@default 3] [@yojson_drop_if fun x -> x = 3];
+      d : int list
+    } [@@deriving yojson]
+#+end_src
+
+The =@default= annotation lets one specify a default value to be
+selected if the field is not specified, when converting from
+Yojson.Safe.  The =@yojson_drop_default= annotation implies that the
+field will be dropped when generating the Yojson.Safe if the value
+being serialized is equal to the default according to the specified equality
+function. =@yojson_drop_if= is like =@yojson_drop_default=, except that
+it lets you specify the condition under which the field is dropped.
+
+***** Specifying equality for [@yojson_drop_default]
+
+The equality used by [@yojson_drop_default] is customizable. There
+are several ways to specify the equality function:
+
+#+begin_src ocaml
+  type t =
+    { a : u [@default u0] [@yojson_drop_default (=)]; (* explicit user-provided function *)
+      b : u [@default u0] [@yojson_drop_default.compare]; (* uses [%compare.equal: u] *)
+      c : u [@default u0] [@yojson_drop_default.equal]; (* uses [%equal: u] *)
+      d : u [@default u0] [@yojson_drop_default.yojson]; (* compares yojson representations *)
+      e : u [@default u0] [@yojson_drop_default]; (* deprecated. uses polymorphic equality. *)
+    } [@@deriving yojson]
+#+end_src
+
+**** Allowing extra fields
+
+The =@yojson.allow_extra_fields= annotation lets one specify that the
+yojson-converters should silently ignore extra fields, instead of
+raising.  This applies only to the record to which the annotation is
+attached, and not to deeper yojson converters that may be called during
+conversion of a yojson to the record.
+
+#+begin_src ocaml
+  type t = { a: int } [@@deriving yojson]
+  {"a":1,"b":2} => exception
+
+  type t = { a: int } [@@deriving yojson] [@@yojson.allow_extra_fields]
+  {"a":1,"b":2} => {a = 1}
+
+  type t = A of { a : int } [@yojson.allow_extra_fields] [@@deriving yojson]
+  ["A", {"a":1,"b":2}] => A {a = 0}
+#+end_src
+
+*** Variants
+Constant constructors in variants are represented as a list with one
+string, which is the name of the contructor.
+Constructors with arguments are represented as lists, the
+first element being the constructor name, the rest being its
+arguments.
+For example:
+
+#+begin_src ocaml
+  type t = A | B of int * float * t [@@deriving yojson]
+  B (42, 3.14, B (-1, 2.72, A))  =>  ["B",42,3.14,["B",-1,2.72,["A"]]]
+#+end_src
+
+The above example also demonstrates recursion in data structures.
+
+if the JSON variant names differ from OCaml conventions, users can specify the
+corresponding JSON string explicitly using =[@name "constr"]=, for example:
+
+#+begin_src ocaml
+type t =
+| Typ   [@name "type"]
+| Class [@name "class"]
+[@@deriving yojson]
+#+end_src
+
+*** Polymorphic variants
+
+Polymorphic variants behave almost the same as ordinary variants.  The
+notable difference is that polymorphic variant constructors must
+always start with an either lower- or uppercase character, matching
+the way it was specified in the type definition.  This is because
+OCaml distinguishes between upper and lowercase variant
+constructors. Note that type specifications containing unions of
+variant types are also supported by the Yojson converter, for
+example as in:
+
+#+begin_src ocaml
+  type ab = [ `A | `B ] [@@deriving yojson]
+  type cd = [ `C | `D ] [@@deriving yojson]
+  type abcd = [ ab | cd ] [@@deriving yojson]
+#+end_src
+
+However, because `ppx_yojson_conv` needs to generate additional code to
+support inclusions of polymorphic variants, `ppx_yojson_conv` needs to
+know when processing a type definition whether it might be included in
+a polymorphic variant. `ppx_yojson_conv` will only generate the extra
+code automatically in the common case where the type definition is
+syntactically a polymorphic variant like in the example
+above. Otherwise, you will need to indicate it by using `[@@deriving
+yojson_poly]` (resp `of_yosjon_poly`) instead of `[@@deriving yojson]` (resp
+`of_yojson`):
+
+#+begin_src ocaml
+  type ab = [ `A | `B ] [@@deriving yojson]
+  type alias_of_ab = ab [@@deriving yojson_poly]
+  type abcd = [ ab | `C | `D ] [@@deriving yojson]
+#+end_src
+
+*** Polymorphic values
+
+There is nothing special about polymorphic values as long as there are
+conversion functions for the type parameters.  /e.g./:
+
+#+begin_src ocaml
+type 'a t = A | B of 'a [@@deriving yojson]
+type foo = int t [@@deriving yojson]
+#+end_src
+
+In the above case the conversion functions will behave as if =foo= had
+been defined as a monomorphic version of =t= with ='a= replaced by
+=int= on the right hand side.
+
+If a data structure is indeed polymorphic and you want to convert it,
+you will have to supply the conversion functions for the type
+parameters at runtime.  If you wanted to convert a value of type ='a
+t= as in the above example, you would have to write something like
+this:
+
+#+begin_src ocaml
+  yojson_of_t yojson_of_a v
+#+end_src
+
+where =yojson_of_a=, which may also be named differently in this
+particular case, is a function that converts values of type ='a= to a
+Yojson.  Types with more than one parameter require passing
+conversion functions for those parameters in the order of their
+appearance on the left hand side of the type definition.
+
+*** Opaque values
+
+Opaque values are ones for which we do not want to perform
+conversions.  This may be, because we do not have Yojson
+converters for them, or because we do not want to apply them in a
+particular type context. /e.g./ to hide large, unimportant parts of
+configurations.  To prevent the preprocessor from generating calls to
+converters, simply apply the attribute =yojson.opaque= to the type, /e.g./:
+
+#+begin_src ocaml
+  type foo = int * (stuff [@yojson.opaque]) [@@deriving yojson]
+#+end_src
+
+Thus, there is no need to specify converters for type =stuff=, and if
+there are any, they will not be used in this particular context.
+Needless to say, it is not possible to convert such a Yojson
+back to the original value.  Here is an example conversion:
+
+#+begin_src ocaml
+  (42, some_stuff)  =>  [42,"<opaque>"]
+#+end_src
+
+*** Exceptions
+
+Unlike Sexp deriver, we are not handling exceptions in the yojson derivier.
+
+*** Hash tables
+
+The Stdlib's Hash tables, which are abstract values in OCaml, are
+represented as association lists, /i.e./ lists of key-value pairs,
+/e.g./:
+
+#+begin_src scheme
+  [["foo",3],["bar",4]]
+#+end_src
+
+Reading in the above Yojson as hash table mapping strings to
+integers (=(string, int) Hashtbl.t=) will map =foo= to =42= and =bar=
+to =3=.
+
+Note that the order of elements in the list may matter, because the
+OCaml-implementation of hash tables keeps duplicates.  Bindings will
+be inserted into the hash table in the order of appearance. Therefore,
+the last binding of a key will be the "visible" one, the others are
+"hidden".  See the OCaml documentation on hash tables for details.
+
+** A note about signatures
+
+In signatures, =ppx_yojson_conv= tries to generate an include of a named
+interface, instead of a list of value bindings.
+That is:
+
+#+begin_src ocaml
+type 'a t [@@deriving yojson]
+#+end_src
+
+will generate:
+
+#+begin_src ocaml
+include Yojsonable.S1 with type 'a t := 'a t
+#+end_src
+
+instead of:
+
+#+begin_src ocaml
+val t_of_yojson : (Yojson.Safe.t -> 'a) -> Yojson.Safe.t -> 'a t
+val yojson_of_t : ('a -> Yojson.Safe.t) -> 'a t -> Yojson.Safe.t
+#+end_src
+
+There are however a number of limitations:
+- the type has to be named t
+- the type can only have up to 3 parameters
+- there shouldn't be any constraint on the type parameters
+
+If these aren't met, then =ppx_yojson_conv= will simply generate a list of value
+bindings.
