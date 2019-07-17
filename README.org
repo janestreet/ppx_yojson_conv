@@ -4,7 +4,7 @@
 
 =ppx_yojson_conv= is a PPX syntax extension that generates code for
 converting OCaml types to and from Yojson.Safe, as defined in the
-[[https://github.com/janestreet/sexplib][=yojson=]] library.  Yojson.Safe are defined by the following type:
+[[https://github.com/ocaml-community/yojson][=yojson=]] library.  Yojson.Safe are defined by the following type:
 
 #+begin_src ocaml
 type t =
