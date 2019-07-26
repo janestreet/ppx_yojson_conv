@@ -324,19 +324,10 @@ end
 (* Generates the signature for type conversion from Yojsons *)
 module Sig_generate_of_yojson = struct
   let type_of_of_yojson ~loc t = [%type: Ppx_yojson_conv_lib.Yojson.Safe.t -> [%t t]]
-
-  let type_of_of_yojson' ~loc t =
-    [%type:
-      Ppx_yojson_conv_lib.Yojson.Safe.t
-      -> [%t t] Ppx_yojson_conv_lib.Yojson_conv.Result.t]
-  ;;
-
   let mk_type td = combinator_type_of_type_declaration td ~f:type_of_of_yojson
-  let mk_type' td = combinator_type_of_type_declaration td ~f:type_of_of_yojson'
 
   let sig_of_td with_poly td =
     let of_yojson_type = mk_type td in
-    let of_yojson_type' = mk_type' td in
     let loc = td.ptype_loc in
     let of_yojson_item =
       psig_value
@@ -347,25 +338,15 @@ module Sig_generate_of_yojson = struct
            ~type_:of_yojson_type
            ~prim:[])
     in
-    let of_yojson_item' =
-      psig_value
-        ~loc
-        (value_description
-           ~loc
-           ~name:(Located.map (fun s -> s ^ "_of_yojson'") td.ptype_name)
-           ~type_:of_yojson_type'
-           ~prim:[])
-    in
     match with_poly, is_polymorphic_variant td ~sig_:true with
     | true, `Surely_not ->
       Location.raise_errorf
         ~loc
         "Sig_generate_of_yojson.sig_of_td: yojson_poly annotation but type is surely \
          not a polymorphic variant"
-    | false, (`Surely_not | `Maybe) -> [ of_yojson_item; of_yojson_item' ]
+    | false, (`Surely_not | `Maybe) -> [ of_yojson_item ]
     | (true | false), `Definitely | true, `Maybe ->
       [ of_yojson_item
-      ; of_yojson_item'
       ; psig_value
           ~loc
           (value_description
@@ -1685,7 +1666,6 @@ module Str_generate_of_yojson = struct
       | Match matchings -> pexp_function ~loc matchings
     in
     let external_name = type_name ^ "_of_yojson" in
-    let external_name' = external_name ^ "'" in
     let internal_name = "__" ^ type_name ^ "_of_yojson__" in
     let arg_patts, arg_exprs =
       List.unzip
@@ -1742,38 +1722,9 @@ module Str_generate_of_yojson = struct
       in
       if need_tp_loc then bind_tp_loc_in body_with_lambdas else body_with_lambdas
     in
-    let external_fun_body' =
-      let need_tp_loc, body_below_lambdas =
-        let arg_exprs' =
-          List.map arg_exprs ~f:(fun expr ->
-            [%expr
-              fun yojson ->
-                Ppx_yojson_conv_lib.Yojson_conv.Result.unpack [%e expr] yojson])
-        in
-        let external_call =
-          let external_expr = evar ~loc external_name in
-          [%expr
-            fun yojson ->
-              Ppx_yojson_conv_lib.Yojson_conv.Result.pack
-                (fun yojson -> [%e eapply ~loc external_expr arg_exprs'] yojson)
-                yojson]
-        in
-        false, bind_tp_loc_in external_call
-      in
-      let body_with_lambdas =
-        eta_reduce_if_possible_and_nonrec
-          ~rec_flag
-          (eabstract ~loc arg_patts body_below_lambdas)
-      in
-      if need_tp_loc then bind_tp_loc_in body_with_lambdas else body_with_lambdas
-    in
     let mk_binding func_name body =
       let typ = Sig_generate_of_yojson.mk_type td in
       constrained_function_binding loc td typ ~tps ~func_name body
-    in
-    let mk_binding' func_name body =
-      let typ' = Sig_generate_of_yojson.mk_type' td in
-      constrained_function_binding loc td typ' ~tps ~func_name body
     in
     let internal_bindings =
       match internal_fun_body with
@@ -1781,8 +1732,7 @@ module Str_generate_of_yojson = struct
       | Some body -> [ mk_binding internal_name body ]
     in
     let external_binding = mk_binding external_name external_fun_body in
-    let external_binding' = mk_binding' external_name' external_fun_body' in
-    internal_bindings, [ external_binding ], [ external_binding' ]
+    internal_bindings, [ external_binding ]
   ;;
 
   (* Generate code from type definitions *)
@@ -1800,56 +1750,28 @@ module Str_generate_of_yojson = struct
       | Recursive ->
         let bindings =
           List.concat_map tds ~f:(fun td ->
-            let internals, externals, externals' =
+            let internals, externals =
               td_of_yojson ~typevar_handling ~loc ~poly ~path ~rec_flag td
             in
-            internals @ externals @ externals')
+            internals @ externals)
         in
         pstr_value_list ~loc Recursive bindings
       | Nonrecursive ->
         List.concat_map tds ~f:(fun td ->
-          let internals, externals, externals' =
+          let internals, externals =
             td_of_yojson ~typevar_handling ~loc ~poly ~path ~rec_flag td
           in
           pstr_value_list ~loc Nonrecursive internals
-          @ pstr_value_list ~loc Nonrecursive externals
-          @ pstr_value_list ~loc Nonrecursive externals'))
+          @ pstr_value_list ~loc Nonrecursive externals))
     else (
       let bindings =
         List.concat_map tds ~f:(fun td ->
-          let internals, externals, externals' =
+          let internals, externals =
             td_of_yojson ~typevar_handling ~poly ~loc ~path ~rec_flag td
           in
-          internals @ externals @ externals')
+          internals @ externals)
       in
       pstr_value_list ~loc rec_flag bindings)
-  ;;
-
-  let type_of_yojson' ~typevar_handling ~path ctyp =
-    let loc = ctyp.ptyp_loc in
-    let fp = type_of_yojson ~typevar_handling ctyp in
-    let body =
-      match fp with
-      | Fun fun_expr ->
-        [%expr
-          try Ok ([%e fun_expr] yojson) with
-          | exn -> Error (Base.Exn.to_string exn)]
-      | Match matchings ->
-        [%expr
-          try Ok [%e pexp_match ~loc [%expr yojson] matchings] with
-          | exn -> Error (Base.Exn.to_string exn)]
-    in
-    let full_type_name =
-      Printf.sprintf
-        "%s line %i: %s"
-        path
-        loc.loc_start.pos_lnum
-        (string_of_core_type ctyp)
-    in
-    [%expr
-      fun yojson ->
-        let _tp_loc = [%e estring ~loc full_type_name] in
-        [%e body]]
   ;;
 
   let type_of_yojson ~typevar_handling ~path ctyp =
@@ -1892,14 +1814,9 @@ end
 
 module Of_yojson = struct
   let type_extension ty = Sig_generate_of_yojson.type_of_of_yojson ~loc:ty.ptyp_loc ty
-  let type_extension' ty = Sig_generate_of_yojson.type_of_of_yojson' ~loc:ty.ptyp_loc ty
 
   let core_type =
     Str_generate_of_yojson.type_of_yojson ~typevar_handling:`disallowed_in_type_expr
-  ;;
-
-  let core_type' =
-    Str_generate_of_yojson.type_of_yojson' ~typevar_handling:`disallowed_in_type_expr
   ;;
 
   let sig_type_decl = Sig_generate_of_yojson.mk_sig

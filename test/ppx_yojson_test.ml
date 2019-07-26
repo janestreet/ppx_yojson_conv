@@ -63,8 +63,6 @@ module Default_omit = struct
     let yojson = yojson_of_ty value in
     let yojson' = `Assoc [ "x", `Null; "y", `Null; "z", `Int 0; "b", `Int 1 ] in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-    require [%here] (Yojson_conv.Result.unpack ty_of_yojson' yojson = value);
-    require [%here] (Yojson_conv.Result.unpack ty_of_yojson' yojson' = value);
     require [%here] (ty_of_yojson yojson = value);
     require [%here] (ty_of_yojson yojson' = value);
     [%expect {|
@@ -83,8 +81,7 @@ module Tuple = struct
       ~f:(fun value ->
         let yojson = yojson_of_poly value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-        require [%here] (poly_of_yojson yojson = value);
-        require [%here] (Yojson_conv.Result.unpack poly_of_yojson' yojson = value))
+        require [%here] (poly_of_yojson yojson = value))
       [ 1, 1., "string"; 1, 2., "example" ];
     [%expect
       {|
@@ -110,8 +107,7 @@ module Types = struct
       ~f:(fun value ->
         let yojson = yojson_of_t value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-        require [%here] (t_of_yojson yojson = value);
-        require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value))
+        require [%here] (t_of_yojson yojson = value))
       [ ( 1
         , Int32.of_int_exn 1
         , Int64.of_int 1
@@ -146,8 +142,7 @@ module Types = struct
         let yojson = yojson_of_lt value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
         require [%here] (Yojson.Safe.equal (yojson_of_lt value) yojson);
-        require [%here] Poly.(lt_of_yojson yojson = value);
-        require [%here] Poly.(Yojson_conv.Result.unpack lt_of_yojson' yojson = value))
+        require [%here] Poly.(lt_of_yojson yojson = value))
       [ lazy 1 ];
     [%expect {|
       (Int 1) |}]
@@ -163,8 +158,7 @@ module Types = struct
         let yojson = yojson_of_opt value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
         require [%here] (Yojson.Safe.equal (yojson_of_opt value) yojson);
-        require [%here] (opt_of_yojson yojson = value);
-        require [%here] (Yojson_conv.Result.unpack opt_of_yojson' yojson = value))
+        require [%here] (opt_of_yojson yojson = value))
       [ Some 1; None ];
     [%expect {|
       (Int 1)
@@ -177,10 +171,7 @@ module Types = struct
         let yojson = [%yojson_of: int list] value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
         require [%here] Poly.([%yojson_of: int list] value = yojson);
-        require [%here] Poly.([%of_yojson: int list] yojson = value);
-        require
-          [%here]
-          Poly.(Yojson_conv.Result.unpack [%of_yojson': int list] yojson = value))
+        require [%here] Poly.([%of_yojson: int list] yojson = value))
       [ []; [ 1 ]; [ 1; 2 ] ];
     [%expect
       {|
@@ -196,10 +187,7 @@ module Types = struct
       ~f:(fun value ->
         let yojson = [%yojson_of: int array] value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-        require [%here] Poly.([%of_yojson: int array] yojson = value);
-        require
-          [%here]
-          Poly.(Yojson_conv.Result.unpack [%of_yojson': int array] yojson = value))
+        require [%here] Poly.([%of_yojson: int array] yojson = value))
       [ [||]; [| 1 |]; [| 1; 2 |] ];
     [%expect
       {|
@@ -215,10 +203,7 @@ module Types = struct
       ~f:(fun yojson ->
         let value = [%of_yojson: float] yojson in
         print_s ([%sexp_of: float] value);
-        require [%here] Poly.([%of_yojson: float] yojson = value);
-        require
-          [%here]
-          Poly.(Yojson_conv.Result.unpack [%of_yojson': float] yojson = value))
+        require [%here] Poly.([%of_yojson: float] yojson = value))
       [ `Float 1.; `Int 1; `Intlit "1" ];
     [%expect {|
       1
@@ -231,10 +216,7 @@ module Types = struct
       ~f:(fun yojson ->
         let value = [%of_yojson: int32] yojson in
         print_s ([%sexp_of: int32] value);
-        require [%here] Poly.([%of_yojson: int32] yojson = value);
-        require
-          [%here]
-          Poly.(Yojson_conv.Result.unpack [%of_yojson': int32] yojson = value))
+        require [%here] Poly.([%of_yojson: int32] yojson = value))
       [ `Int 1; `Intlit "1" ];
     [%expect {|
       1
@@ -246,10 +228,7 @@ module Types = struct
       ~f:(fun yojson ->
         let value = [%of_yojson: int64] yojson in
         print_s ([%sexp_of: int64] value);
-        require [%here] Poly.([%of_yojson: int64] yojson = value);
-        require
-          [%here]
-          Poly.(Yojson_conv.Result.unpack [%of_yojson': int64] yojson = value))
+        require [%here] Poly.([%of_yojson: int64] yojson = value))
       [ `Int 1; `Intlit "1" ];
     [%expect {|
       1
@@ -261,10 +240,7 @@ module Types = struct
       ~f:(fun yojson ->
         let value = [%of_yojson: nativeint] yojson in
         print_s ([%sexp_of: nativeint] value);
-        require [%here] Poly.([%of_yojson: nativeint] yojson = value);
-        require
-          [%here]
-          Poly.(Yojson_conv.Result.unpack [%of_yojson': nativeint] yojson = value))
+        require [%here] Poly.([%of_yojson: nativeint] yojson = value))
       [ `Int 1; `Intlit "1" ];
     [%expect {|
       1
@@ -280,9 +256,6 @@ module Types = struct
     let yojson = [%yojson_of: (string, string) hashtbl] tbl in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] ([%of_yojson: (string, string) hashtbl] yojson = tbl);
-    require
-      [%here]
-      (Yojson_conv.Result.unpack [%of_yojson': (string, string) hashtbl] yojson = tbl);
     [%expect
       {|
       (List (
@@ -308,8 +281,7 @@ module Sum_and_polymorphic_variants = struct
       ~f:(fun value ->
         let yojson = yojson_of_poly value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-        require [%here] (poly_of_yojson yojson = value);
-        require [%here] (Yojson_conv.Result.unpack poly_of_yojson' yojson = value))
+        require [%here] (poly_of_yojson yojson = value))
       [ `No_arg; `One_arg 1; `One_tuple (1, "a"); `Two_args (1, "a") ];
     [%expect
       {|
@@ -341,8 +313,7 @@ module Sum_and_polymorphic_variants = struct
       ~f:(fun value ->
         let yojson = yojson_of_nominal value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-        require [%here] (nominal_of_yojson yojson = value);
-        require [%here] (Yojson_conv.Result.unpack nominal_of_yojson' yojson = value))
+        require [%here] (nominal_of_yojson yojson = value))
       [ No_arg; One_arg 1; One_tuple (1, "a"); Two_args (1, "a") ];
     [%expect
       {|
@@ -379,8 +350,7 @@ module Name = struct
       ~f:(fun value ->
         let yojson = yojson_of_nominal value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-        require [%here] (nominal_of_yojson yojson = value);
-        require [%here] (Yojson_conv.Result.unpack nominal_of_yojson' yojson = value))
+        require [%here] (nominal_of_yojson yojson = value))
       [ Con_1; Con_2 2; Con_3 (1, "a"); Con_4 (1, "a"); Con_5 { a = 1 }; Con_6 { b = 1 } ];
     [%expect
       {|
@@ -416,7 +386,6 @@ module Records = struct
     let yojson = yojson_of_t t in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = t);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = t);
     [%expect
       {|
       (Assoc (
@@ -447,7 +416,6 @@ module Keys = struct
     let yojson = yojson_of_t t in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = t);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = t);
     [%expect
       {|
       (Assoc (
@@ -475,7 +443,6 @@ module Inline_records = struct
     let yojson = yojson_of_t t in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = t);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = t);
     [%expect
       {|
       (List (
@@ -493,7 +460,6 @@ module Inline_records = struct
     let yojson = yojson_of_t t in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = t);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = t);
     [%expect {|
       (List (
         (String B)
@@ -507,19 +473,11 @@ module User_specified_conversion = struct
   let yojson_of_my_float n = `Float n
   let my_float_of_yojson = float_of_yojson
 
-  let my_float_of_yojson' x =
-    try Ok (float_of_yojson x) with
-    | exn -> Error (Base.Exn.to_string exn)
-  ;;
-
   let%expect_test _ =
     let my_float : my_float = 1.2 in
     let yojson = yojson_of_my_float my_float in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] Float.(my_float_of_yojson yojson = my_float);
-    require
-      [%here]
-      Float.(Yojson_conv.Result.unpack my_float_of_yojson' yojson = my_float);
     [%expect {| (Float 1.2) |}]
   ;;
 end
@@ -590,11 +548,6 @@ module Polymorphic_variant_inclusion = struct
           [%here]
           ([%equal: (string * string, float) t]
              ([%of_yojson: (string * string, float) t] yojson)
-             t);
-        require
-          [%here]
-          ([%equal: (string * string, float) t]
-             (Yojson_conv.Result.unpack [%of_yojson': (string * string, float) t] yojson)
              t))
       cases;
     [%expect
@@ -633,8 +586,7 @@ module Polymorphic_variant_inclusion = struct
       ~f:(fun u ->
         let yojson = [%yojson_of: u] u in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-        require [%here] ([%of_yojson: u] yojson = u);
-        require [%here] (Yojson_conv.Result.unpack [%of_yojson': u] yojson = u))
+        require [%here] ([%of_yojson: u] yojson = u))
       cases;
     [%expect
       {|
@@ -652,16 +604,11 @@ module Polymorphic_record_field = struct
     }
   [@@deriving yojson]
 
-  let int_of_yojson' = Yojson_conv.Result.pack int_of_yojson
-
   let%expect_test _ =
     let t x = { poly = []; maybe_x = Some x } in
     let yojson = yojson_of_t yojson_of_int (t 1) in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] Poly.(t_of_yojson int_of_yojson yojson = t 1);
-    require
-      [%here]
-      Poly.(Yojson_conv.Result.unpack (t_of_yojson' int_of_yojson') yojson = t 1);
     require [%here] Poly.(yojson_of_t yojson_of_int (t 1) = yojson);
     [%expect {| (Assoc ((poly (List ())) (maybe_x (Int 1)))) |}]
   ;;
@@ -767,7 +714,6 @@ module Type_alias = struct
     let yojson = B.yojson_of_t `A in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (`A = B.t_of_yojson yojson);
-    require [%here] (Yojson_conv.Result.unpack B.t_of_yojson' yojson = `A);
     [%expect {| (List ((String A))) |}]
   ;;
 
@@ -872,7 +818,6 @@ module Drop_if = struct
     let yojson = yojson_of_t value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value);
     require [%here] (t_of_yojson (`Assoc [ "a", `Int 2 ]) = value);
     [%expect {| (Assoc ()) |}]
   ;;
@@ -882,7 +827,6 @@ module Drop_if = struct
     let yojson = yojson_of_t value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value);
     [%expect {| (Assoc ((a (Int 1)))) |}]
   ;;
 
@@ -920,7 +864,6 @@ module Omit_nil = struct
     let yojson = yojson_of_t value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value);
     [%expect {| (Assoc ((a (Int 1)))) |}]
   ;;
 
@@ -930,9 +873,7 @@ module Omit_nil = struct
     let yojson' = `Assoc [] in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value);
     require [%here] (t_of_yojson yojson' = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson' = value);
     [%expect {|
       (Assoc ()) |}]
   ;;
@@ -947,9 +888,7 @@ module Omit_nil = struct
     let yojson' = `List [ `String "A"; `Assoc [] ] in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t2_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t2_of_yojson' yojson = value);
     require [%here] (t2_of_yojson yojson' = value);
-    require [%here] (Yojson_conv.Result.unpack t2_of_yojson' yojson' = value);
     [%expect {| (List ((String A) (Assoc ()))) |}]
   ;;
 
@@ -958,7 +897,6 @@ module Omit_nil = struct
     let yojson = yojson_of_t2 value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t2_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t2_of_yojson' yojson = value);
     [%expect {| (List ((String A) (Assoc ((a (Int 1)))))) |}]
   ;;
 end
@@ -980,7 +918,6 @@ module True_and_false = struct
     let yojson = yojson_of_t value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value);
     [%expect {| (List ((String True))) |}]
   ;;
 
@@ -989,7 +926,6 @@ module True_and_false = struct
     let yojson = yojson_of_t value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value);
     [%expect {| (List ((String False))) |}]
   ;;
 
@@ -1005,7 +941,6 @@ module True_and_false = struct
     let yojson = yojson_of_u value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (u_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack u_of_yojson' yojson = value);
     [%expect {|
       (List (
         (String True)
@@ -1017,7 +952,6 @@ module True_and_false = struct
     let yojson = yojson_of_u value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (u_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack u_of_yojson' yojson = value);
     [%expect {|
       (List (
         (String False)
@@ -1037,7 +971,6 @@ module True_and_false = struct
     let yojson = yojson_of_v value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (v_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack v_of_yojson' yojson = value);
     [%expect {|
       (List ((String True))) |}]
   ;;
@@ -1047,7 +980,6 @@ module True_and_false = struct
     let yojson = yojson_of_v value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (v_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack v_of_yojson' yojson = value);
     [%expect {|
       (List (
         (String False)
@@ -1184,7 +1116,6 @@ module Anonymous_variable = struct
     let yojson = [%yojson_of: _ t] 2 in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] Poly.([%of_yojson: _ t] yojson = 2);
-    require [%here] Poly.(Yojson_conv.Result.unpack [%of_yojson': _ t] yojson = 2);
     [%expect {|
       (Int 2) |}]
   ;;
@@ -1234,18 +1165,14 @@ module Opaque = struct
     let yojson = yojson_of_t value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require_does_raise [%here] (fun () -> t_of_yojson yojson);
-    require_does_raise [%here] (fun () -> Yojson_conv.Result.unpack t_of_yojson' yojson);
     [%expect
       {|
       (List (
         (String <opaque>)
         (String <opaque>)))
       (Of_yojson_error
-        (Failure "opaque_of_yojson: cannot convert opaque values")
-        "\"<opaque>\"")
-      (Of_yojson_error
-        (Failure "opaque_of_yojson: cannot convert opaque values")
-        "[\"<opaque>\",\"<opaque>\"]") |}]
+       "opaque_of_yojson: cannot convert opaque values"
+       "\"<opaque>\"") |}]
   ;;
 
   type u = ([ `A of int ][@yojson.opaque]) [@@deriving yojson]
@@ -1255,16 +1182,12 @@ module Opaque = struct
     let yojson = yojson_of_u value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require_does_raise [%here] (fun () -> u_of_yojson yojson);
-    require_does_raise [%here] (fun () -> Yojson_conv.Result.unpack u_of_yojson' yojson);
     [%expect
       {|
       (String <opaque>)
       (Of_yojson_error
-        (Failure "opaque_of_yojson: cannot convert opaque values")
-        "\"<opaque>\"")
-      (Of_yojson_error
-        (Failure "opaque_of_yojson: cannot convert opaque values")
-        "\"<opaque>\"") |}]
+       "opaque_of_yojson: cannot convert opaque values"
+       "\"<opaque>\"") |}]
   ;;
 end
 
@@ -1278,7 +1201,6 @@ module Optional = struct
     let yojson = yojson_of_t value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value);
     [%expect {| (Assoc ()) |}]
   ;;
 
@@ -1287,7 +1209,6 @@ module Optional = struct
     let yojson = yojson_of_t value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
-    require [%here] (Yojson_conv.Result.unpack t_of_yojson' yojson = value);
     [%expect {| (Assoc ((optional (Int 5)))) |}]
   ;;
 end
@@ -1350,7 +1271,6 @@ end
 module Type_extensions = struct
   let (_ : [%yojson_of: int]) = [%yojson_of: int]
   let (_ : [%of_yojson: int]) = [%of_yojson: int]
-  let (_ : [%of_yojson': int]) = [%of_yojson': int]
 end
 
 module Allow_extra_fields = struct
@@ -1365,27 +1285,12 @@ module Allow_extra_fields = struct
       let yojson_extra = Yojson.from_string {|{"a":1,"b":2}|} in
       require [%here] (t2_of_yojson yojson = t2_of_yojson yojson_extra);
       require [%here] (t1_of_yojson yojson = t2_of_yojson yojson);
-      require
-        [%here]
-        (Yojson_conv.Result.unpack t2_of_yojson' yojson
-         = Yojson_conv.Result.unpack t2_of_yojson' yojson_extra);
-      require
-        [%here]
-        (Yojson_conv.Result.unpack t1_of_yojson' yojson
-         = Yojson_conv.Result.unpack t2_of_yojson' yojson);
       require_does_raise [%here] (fun () -> t1_of_yojson yojson_extra);
-      require_does_raise [%here] (fun () ->
-        Yojson_conv.Result.unpack t1_of_yojson' yojson_extra);
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Allow_extra_fields.M1.t1_of_yojson: extra fields: b")
-          "{\"a\":1,\"b\":2}")
-        (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Allow_extra_fields.M1.t1_of_yojson: extra fields: b")
-          "{\"a\":1,\"b\":2}") |}]
+         "ppx_yojson_test.ml.Allow_extra_fields.M1.t1_of_yojson: extra fields: b"
+         "{\"a\":1,\"b\":2}") |}]
     ;;
   end
 
@@ -1402,27 +1307,12 @@ module Allow_extra_fields = struct
       let yojson_extra = Yojson.from_string {|["A",{"a":[0],"b":"1"}]|} in
       require [%here] (t2_of_yojson yojson = t2_of_yojson yojson_extra);
       require [%here] (t1_of_yojson yojson = t2_of_yojson yojson);
-      require
-        [%here]
-        (Yojson_conv.Result.unpack t2_of_yojson' yojson
-         = Yojson_conv.Result.unpack t2_of_yojson' yojson_extra);
-      require
-        [%here]
-        (Yojson_conv.Result.unpack t1_of_yojson' yojson
-         = Yojson_conv.Result.unpack t2_of_yojson' yojson);
       require_does_raise [%here] (fun () -> t1_of_yojson yojson_extra);
-      require_does_raise [%here] (fun () ->
-        Yojson_conv.Result.unpack t1_of_yojson' yojson_extra);
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Allow_extra_fields.M2.t1_of_yojson: extra fields: b")
-          "[\"A\",{\"a\":[0],\"b\":\"1\"}]")
-        (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Allow_extra_fields.M2.t1_of_yojson: extra fields: b")
-          "[\"A\",{\"a\":[0],\"b\":\"1\"}]") |}]
+         "ppx_yojson_test.ml.Allow_extra_fields.M2.t1_of_yojson: extra fields: b"
+         "[\"A\",{\"a\":[0],\"b\":\"1\"}]") |}]
     ;;
   end
 end
@@ -1442,9 +1332,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag")
-          "[\"Z\"]") |}]
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag"
+         "[\"Z\"]") |}]
     ;;
 
     let%expect_test _ =
@@ -1453,9 +1342,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag")
-          "[\"A\"]") |}]
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag"
+         "[\"A\"]") |}]
     ;;
 
     let%expect_test _ =
@@ -1468,17 +1356,15 @@ module Exceptions = struct
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "B"; `Float 1. ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect
-        {|
-        (Of_yojson_error (Failure "int_of_yojson: integer needed") 1.0) |}]
+      [%expect {|
+        (Of_yojson_error "int_of_yojson: integer needed" 1.0) |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "B"; `Intlit "1" ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect
-        {|
-        (Of_yojson_error (Failure "int_of_yojson: integer needed") 1) |}]
+      [%expect {|
+        (Of_yojson_error "int_of_yojson: integer needed" 1) |}]
     ;;
 
     let%expect_test _ =
@@ -1487,9 +1373,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag")
-          "[\"C\",\"string\"]") |}]
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag"
+         "[\"C\",\"string\"]") |}]
     ;;
 
     let%expect_test _ =
@@ -1498,17 +1383,15 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: extra fields: b")
-          "[\"C\",{\"b\":1}]") |}]
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: extra fields: b"
+         "[\"C\",{\"b\":1}]") |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "D"; `Int 1; `Float 1. ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect
-        {|
-        (Of_yojson_error (Failure "string_of_yojson: string needed") 1.0) |}]
+      [%expect {|
+        (Of_yojson_error "string_of_yojson: string needed" 1.0) |}]
     ;;
 
     let%expect_test _ =
@@ -1517,9 +1400,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: sum tag \"D\" has incorrect number of arguments")
-          "[\"D\",[1,1.0]]") |}]
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: sum tag \"D\" has incorrect number of arguments"
+         "[\"D\",[1,1.0]]") |}]
     ;;
 
     let%expect_test _ =
@@ -1528,9 +1410,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: sum tag \"D\" has incorrect number of arguments")
-          "[\"D\",1,1.0,\"str\"]") |}]
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: sum tag \"D\" has incorrect number of arguments"
+         "[\"D\",1,1.0,\"str\"]") |}]
     ;;
   end
 
@@ -1548,33 +1429,29 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: no matching variant found")
-          "[\"Z\"]") |}]
+         "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: no matching variant found"
+         "[\"Z\"]") |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "B"; `Float 1. ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect
-        {|
-        (Of_yojson_error (Failure "int_of_yojson: integer needed") 1.0) |}]
+      [%expect {|
+        (Of_yojson_error "int_of_yojson: integer needed" 1.0) |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "B"; `Intlit "1" ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect
-        {|
-        (Of_yojson_error (Failure "int_of_yojson: integer needed") 1) |}]
+      [%expect {|
+        (Of_yojson_error "int_of_yojson: integer needed" 1) |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "D"; `Int 1; `Float 1. ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect
-        {|
-        (Of_yojson_error (Failure "string_of_yojson: string needed") 1.0) |}]
+      [%expect {|
+        (Of_yojson_error "string_of_yojson: string needed" 1.0) |}]
     ;;
 
     let%expect_test _ =
@@ -1583,9 +1460,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: polymorphic variant tag \"D\" has incorrect number of arguments")
-          "[\"D\",[1,1.0]]") |}]
+         "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: polymorphic variant tag \"D\" has incorrect number of arguments"
+         "[\"D\",[1,1.0]]") |}]
     ;;
 
     let%expect_test _ =
@@ -1594,9 +1470,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: polymorphic variant tag \"D\" has incorrect number of arguments")
-          "[\"D\",1,1.0,\"str\"]") |}]
+         "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: polymorphic variant tag \"D\" has incorrect number of arguments"
+         "[\"D\",1,1.0,\"str\"]") |}]
     ;;
   end
 
@@ -1626,9 +1501,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: extra fields: a")
-          "{\"a\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1}") |}]
+         "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: extra fields: a"
+         "{\"a\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1}") |}]
     ;;
 
     let%expect_test _ =
@@ -1643,9 +1517,8 @@ module Exceptions = struct
           ]
       in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_field_type);
-      [%expect
-        {|
-        (Of_yojson_error (Failure "int_of_yojson: integer needed") "\"A\"") |}]
+      [%expect {|
+        (Of_yojson_error "int_of_yojson: integer needed" "\"A\"") |}]
     ;;
 
     let%expect_test _ =
@@ -1656,9 +1529,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: the following record elements were undefined: d")
-          "{\"A\":1,\"b\":\"str\",\"c\":1.0}") |}]
+         "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: the following record elements were undefined: d"
+         "{\"A\":1,\"b\":\"str\",\"c\":1.0}") |}]
     ;;
 
     let%expect_test _ =
@@ -1677,9 +1549,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: duplicate fields: f")
-          "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"f\":1}") |}]
+         "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: duplicate fields: f"
+         "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"f\":1}") |}]
     ;;
 
     let%expect_test _ =
@@ -1698,9 +1569,8 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-          (Failure
-           "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: extra fields: g")
-          "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"g\":1}") |}]
+         "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: extra fields: g"
+         "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"g\":1}") |}]
     ;;
   end
 end

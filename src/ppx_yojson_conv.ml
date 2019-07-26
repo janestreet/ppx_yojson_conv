@@ -48,7 +48,6 @@ module Of_yojson = struct
   module E = Ppx_yojson_conv_expander.Of_yojson
 
   let name = "of_yojson"
-  let name' = "of_yojson'"
 
   let str_type_decl =
     Deriving.Generator.make_noarg
@@ -58,9 +57,7 @@ module Of_yojson = struct
 
   let sig_type_decl = Deriving.Generator.make_noarg (E.sig_type_decl ~poly:false)
   let extension ~loc:_ ~path ctyp = E.core_type ~path ctyp
-  let extension' ~loc:_ ~path ctyp = E.core_type' ~path ctyp
   let deriver = Deriving.add name ~str_type_decl ~sig_type_decl ~extension
-  let deriver' = Deriving.add name' ~extension:extension'
 
   let () =
     Driver.register_transformation
@@ -72,19 +69,6 @@ module Of_yojson = struct
                Core_type
                Ast_pattern.(ptyp __)
                (fun ~loc:_ ~path:_ ty -> E.type_extension ty))
-        ]
-  ;;
-
-  let () =
-    Driver.register_transformation
-      name'
-      ~rules:
-        [ Context_free.Rule.extension
-            (Extension.declare
-               name'
-               Core_type
-               Ast_pattern.(ptyp __)
-               (fun ~loc:_ ~path:_ ty -> E.type_extension' ty))
         ]
   ;;
 end
@@ -104,7 +88,6 @@ end
 
 let yojson_of = Yojson_of.deriver
 let yojson_fields_of = Yojson_fields.deriver
-let of_yojson' = Of_yojson.deriver'
 let of_yojson = Of_yojson.deriver
 let of_yojson_poly = Of_yojson_poly.deriver
 

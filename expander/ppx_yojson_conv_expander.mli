@@ -33,9 +33,7 @@ end
 
 module Of_yojson : sig
   val type_extension : core_type -> core_type
-  val type_extension' : core_type -> core_type
   val core_type : path:string -> core_type -> expression
-  val core_type' : path:string -> core_type -> expression
 
   val sig_type_decl
     :  poly:bool
