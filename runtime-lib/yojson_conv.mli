@@ -226,14 +226,6 @@ val opaque_of_yojson : Yojson.Safe.t -> 'a
     convert an Yojson to a function. *)
 val fun_of_yojson : Yojson.Safe.t -> 'a
 
-module Result : sig
-  type 'a t = ('a, string) result
-
-  val unpack : (Yojson.Safe.t -> 'a t) -> Yojson.Safe.t -> 'a
-  val pack : (Yojson.Safe.t -> 'a) -> Yojson.Safe.t -> 'a t
-  val of_exn : exn -> 'a t
-end
-
 module Primitives : sig
   val yojson_of_unit : unit -> Yojson.Safe.t
   val yojson_of_bool : bool -> Yojson.Safe.t

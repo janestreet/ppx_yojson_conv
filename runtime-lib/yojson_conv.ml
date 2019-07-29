@@ -198,27 +198,6 @@ let fun_of_yojson yojson =
   of_yojson_error "fun_of_yojson: cannot convert function values" yojson
 ;;
 
-module Result = struct
-  type 'a t = ('a, string) result
-
-  let unpack (f : Safe.t -> 'a t) x : 'a =
-    match f x with
-    | Ok v -> v
-    | Error str -> of_yojson_error str x
-  ;;
-
-  let of_exn = function
-    | Of_yojson_error (Failure s, _json) -> Error s
-    | exn -> Error (Printexc.to_string exn)
-  ;;
-
-  let pack (f : Safe.t -> 'a) x : 'a t =
-    match f x with
-    | v -> Ok v
-    | exception exn -> of_exn exn
-  ;;
-end
-
 module Primitives = struct
   let yojson_of_array = yojson_of_array
   let array_of_yojson = array_of_yojson
