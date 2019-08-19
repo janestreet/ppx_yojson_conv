@@ -430,11 +430,12 @@ module Str_generate_yojson_of = struct
         ((loc, row_fields) : Location.t * row_field list)
     : Fun_or_match.t
     =
-    let item = function
-      | Rtag ({ txt = cnstr; _ }, _, true, []) ->
+    let item row =
+      match row.prf_desc with
+      | Rtag ({ txt = cnstr; _ }, true, []) ->
         ppat_variant ~loc cnstr None
         --> [%expr `List [ `String [%e estring ~loc cnstr] ]]
-      | Rtag ({ txt = cnstr; _ }, _, false, [ tp ]) ->
+      | Rtag ({ txt = cnstr; _ }, false, [ tp ]) ->
         let args =
           match tp.ptyp_desc with
           | Ptyp_tuple tps -> tps
@@ -457,7 +458,7 @@ module Str_generate_yojson_of = struct
       | Rinherit { ptyp_desc = Ptyp_constr (id, []); _ } ->
         ppat_alias ~loc (ppat_type ~loc id) (Loc.make "v" ~loc)
         --> yojson_of_type_constr ~loc id [ [%expr v] ]
-      | Rtag (_, _, true, [ _ ]) | Rtag (_, _, _, _ :: _ :: _) ->
+      | Rtag (_, true, [ _ ]) | Rtag (_, _, _ :: _ :: _) ->
         Location.raise_errorf ~loc "unsupported: yojson_of_variant/Rtag/&"
       | Rinherit ({ ptyp_desc = Ptyp_constr (id, _ :: _); _ } as typ) ->
         let call = Fun_or_match.expr ~loc (yojson_of_type ~typevar_handling typ) in
@@ -465,7 +466,7 @@ module Str_generate_yojson_of = struct
       | Rinherit _ ->
         Location.raise_errorf ~loc "unsupported: yojson_of_variant/Rinherit/non-id"
       (* impossible?*)
-      | Rtag (_, _, false, []) -> assert false
+      | Rtag (_, false, []) -> assert false
     in
     Match (List.map ~f:item row_fields)
 
@@ -987,19 +988,19 @@ module Str_generate_of_yojson = struct
      structured variants, atomic variants + included variant types,
      and structured variants + included variant types. *)
   let split_row_field ~loc (atoms, structs, ainhs, sinhs) row_field =
-    match row_field with
-    | Rtag ({ txt = cnstr; _ }, _, true, []) ->
+    match row_field.prf_desc with
+    | Rtag ({ txt = cnstr; _ }, true, []) ->
       let tpl = loc, cnstr in
       tpl :: atoms, structs, `A tpl :: ainhs, sinhs
-    | Rtag ({ txt = cnstr; _ }, _, false, [ tp ]) ->
+    | Rtag ({ txt = cnstr; _ }, false, [ tp ]) ->
       let loc = tp.ptyp_loc in
       atoms, (loc, cnstr) :: structs, ainhs, `S (loc, cnstr, tp, row_field) :: sinhs
     | Rinherit inh ->
       let iinh = `I inh in
       atoms, structs, iinh :: ainhs, iinh :: sinhs
-    | Rtag (_, _, true, [ _ ]) | Rtag (_, _, _, _ :: _ :: _) ->
+    | Rtag (_, true, [ _ ]) | Rtag (_, _, _ :: _ :: _) ->
       Location.raise_errorf ~loc "split_row_field/&"
-    | Rtag (_, _, false, []) -> assert false
+    | Rtag (_, false, []) -> assert false
   ;;
 
   let type_constr_of_yojson ?(internal = false) ~loc id args =
@@ -1217,7 +1218,7 @@ module Str_generate_of_yojson = struct
     in
     let top_match =
       match row_fields with
-      | Rinherit inh :: rest ->
+      | { prf_desc = Rinherit inh; _ } :: rest ->
         let rec loop inh row_fields =
           let call =
             [%expr
@@ -1232,7 +1233,7 @@ module Str_generate_of_yojson = struct
           | [] -> call
           | h :: t ->
             let expr =
-              match h with
+              match h.prf_desc with
               | Rinherit inh -> loop inh t
               | _ ->
                 let rftag_matches =

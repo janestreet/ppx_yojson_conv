@@ -30,9 +30,9 @@ Line _, characters 21-23:
 Error: Type variables not allowed in [%of_yojson: ]. Please use locally abstract types instead.
 |}]
 
-let _ = [%yojson (() : 'a)]
+let (_ : _) = [%yojson (() : 'a)]
 
 [%%expect {|
-Line _, characters 10-16:
+Line _, characters 16-22:
 Error: Extension `yojson' was not translated
 |}]

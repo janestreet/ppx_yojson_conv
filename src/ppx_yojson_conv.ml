@@ -123,9 +123,9 @@ let _ =
       ( [ Ast_builder.Default.(
           pstr_open
             ~loc
-            (open_description
+            (open_infos
                ~loc
-               ~lid:(Located.mk ~loc primitives)
+               ~expr:(pmod_ident ~loc (Located.mk ~loc primitives))
                ~override:Override))
         ]
       , [] ))
