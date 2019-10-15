@@ -4,7 +4,7 @@ type t = int [@@deriving yojson] [@@yojson.allow_extra_fields]
 
 [%%expect
   {|
-Line _, characters 0-62:
+Line _, characters _-_:
 Error: ppx_yojson_conv: [@@allow_extra_fields] is only allowed on records.
 |}]
 
@@ -15,7 +15,7 @@ type 'a t = 'a option =
 
 [%%expect
   {|
-Line _, characters 0-97:
+Line _, characters _-_:
 Error: ppx_yojson_conv: [@@allow_extra_fields] is only allowed on records.
 |}]
 
@@ -23,7 +23,7 @@ type 'a t = Some of { a : int } [@@deriving yojson] [@@yojson.allow_extra_fields
 
 [%%expect
   {|
-Line _, characters 0-81:
+Line _, characters _-_:
 Error: ppx_yojson_conv: [@@allow_extra_fields] only works on records. For inline records, do: type t = A of { a : int } [@allow_extra_fields] | B [@@deriving yojson]
 |}]
 
@@ -34,7 +34,7 @@ type 'a t =
 
 [%%expect
   {|
-Line _, characters 0-93:
+Line _, characters _-_:
 Error: ppx_yojson_conv: [@allow_extra_fields] is only allowed on inline records.
 |}]
 
@@ -45,7 +45,7 @@ type t =
 
 [%%expect
   {|
-Line _, characters 20-21:
+Line _, characters _-_:
 Error: [@yojson_drop_default.equal] was used, but the type of the field contains a type defined in the current recursive block: t.
 This is not supported.
 Consider using [@yojson_drop_if _] or [@yojson_drop_default.yojson] instead.
@@ -56,7 +56,7 @@ type nonrec 'a t = { foo : 'a option [@default None] [@yojson_drop_default.equal
 
 [%%expect
   {|
-Line _, characters 27-36:
+Line _, characters _-_:
 Error: [@yojson_drop_default.equal] was used, but the type of the field contains a type variable: 'a.
 Comparison is not avaiable for type variables.
 Consider using [@yojson_drop_if _] or [@yojson_drop_default.yojson] instead.
@@ -68,7 +68,7 @@ type t = { a : int [@default 8] [@yojson_drop_default] } [@@deriving yojson_of]
 
 [%%expect
   {|
-Line _, characters 15-18:
+Line _, characters _-_:
 Error (warning 22): [@yojson_drop_default] is deprecated: please use one of:
 - [@yojson_drop_default f] and give an explicit equality function ([f = Poly.(=)] corresponds to the old behavior)
 - [@yojson_drop_default.compare] if the type supports [%compare]
@@ -82,12 +82,12 @@ type t = { x : unit [@yojson.opaque] } [@@deriving of_yojson]
 
 [%%expect
   {|
-Line _, characters 22-35:
+Line _, characters _-_:
 Error: Attribute `yojson.opaque' was not used.
 Hint: `yojson.opaque' is available for core types but is used here in the
 context of a label declaration.
 Did you put it at the wrong level?
-Line _, characters 22-35:
+Line _, characters _-_:
 Error: Attribute `yojson.opaque' was not used.
 Hint: `yojson.opaque' is available for core types but is used here in the
 context of a label declaration.
@@ -100,9 +100,9 @@ type t = { x : unit [@yojson.option] } [@@deriving of_yojson]
 
 [%%expect
   {|
-Line _, characters 11-12:
+Line _, characters _-_:
 Error: ppx_yojson_conv: [@yojson.option] is only allowed on type [_ option].
-Line _, characters 11-12:
+Line _, characters _-_:
 Error: ppx_yojson_conv: [@yojson.option] is only allowed on type [_ option].
 |}]
 
@@ -110,7 +110,7 @@ type t = int [@@deriving yojson_fields]
 
 [%%expect
   {|
-Line _, characters 0-39:
+Line _, characters _-_:
 Error: ppx_yojson_conv: yojson_fields only works on records
 |}]
 
@@ -118,7 +118,7 @@ type t = A [@@deriving yojson_fields]
 
 [%%expect
   {|
-Line _, characters 0-37:
+Line _, characters _-_:
 Error: ppx_yojson_conv: yojson_fields only works on records
 |}]
 
@@ -130,7 +130,7 @@ type t =
 
 [%%expect
   {|
-Line _, characters 0-53:
+Line _, characters _-_:
 Error: ppx_yojson_conv: yojson_fields only works on records
 |}]
 
@@ -138,7 +138,7 @@ type t = int * int [@@deriving yojson_fields]
 
 [%%expect
   {|
-Line _, characters 0-45:
+Line _, characters _-_:
 Error: ppx_yojson_conv: yojson_fields only works on records
 |}]
 
@@ -150,7 +150,7 @@ and u = { y : t } [@@deriving yojson_fields]
 
 [%%expect
   {|
-Line _, characters 0-13:
+Line _, characters _-_:
 Error: ppx_yojson_conv: yojson_fields only works on records
 |}]
 
@@ -158,6 +158,6 @@ type t = string list [@@deriving yojson_fields]
 
 [%%expect
   {|
-Line _, characters 0-47:
+Line _, characters _-_:
 Error: ppx_yojson_conv: yojson_fields only works on records
 |}]

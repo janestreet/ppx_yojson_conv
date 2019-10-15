@@ -18,7 +18,7 @@ let _ = [%yojson_of: 'a]
 
 [%%expect
   {|
-Line _, characters 21-23:
+Line _, characters _-_:
 Error: Type variables not allowed in [%yojson_of: ]. Please use locally abstract types instead.
 |}]
 
@@ -26,13 +26,13 @@ let _ = [%of_yojson: 'a]
 
 [%%expect
   {|
-Line _, characters 21-23:
+Line _, characters _-_:
 Error: Type variables not allowed in [%of_yojson: ]. Please use locally abstract types instead.
 |}]
 
 let (_ : _) = [%yojson (() : 'a)]
 
 [%%expect {|
-Line _, characters 16-22:
+Line _, characters _-_:
 Error: Extension `yojson' was not translated
 |}]
