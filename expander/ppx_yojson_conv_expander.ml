@@ -328,7 +328,7 @@ module Sig_generate_of_yojson = struct
 
   let sig_of_td with_poly td =
     let of_yojson_type = mk_type td in
-    let loc = td.ptype_loc in
+    let loc = { td.ptype_loc with loc_ghost = true } in
     let of_yojson_item =
       psig_value
         ~loc
@@ -373,7 +373,7 @@ module Str_generate_yojson_of = struct
             typ
     : Fun_or_match.t
     =
-    let loc = typ.ptyp_loc in
+    let loc = { typ.ptyp_loc with loc_ghost = true } in
     match typ with
     | _ when Option.is_some (Attribute.get Attrs.opaque typ) ->
       Fun [%expr Ppx_yojson_conv_lib.Yojson_conv.yojson_of_opaque]
@@ -516,7 +516,7 @@ module Str_generate_yojson_of = struct
     | Inspect_yojson of (cnv_expr:expression -> location -> expression -> expression)
 
   let yojson_of_record_field ~renaming patt expr name tp ?yojson_of is_empty_expr key =
-    let loc = tp.ptyp_loc in
+    let loc = { tp.ptyp_loc with loc_ghost = true } in
     let patt = mk_rec_patt loc patt name in
     let cnv_expr =
       match yojson_of_type ~typevar_handling:(`ok renaming) tp with
@@ -685,7 +685,7 @@ module Str_generate_yojson_of = struct
       let key =
         Option.value ~default:ld.pld_name.txt (Attribute.get Attrs.yojson_key ld)
       in
-      let loc = ld.pld_name.loc in
+      let loc = { ld.pld_name.loc with loc_ghost = true } in
       match Attrs.Record_field_handler.Yojson_of.create ~loc ld with
       | `yojson_option tp ->
         let patt = mk_rec_patt loc patt name in
@@ -1013,7 +1013,7 @@ module Str_generate_of_yojson = struct
   let rec type_of_yojson ~typevar_handling ?full_type ?(internal = false) typ
     : Fun_or_match.t
     =
-    let loc = typ.ptyp_loc in
+    let loc = { typ.ptyp_loc with loc_ghost = true } in
     match typ with
     | _ when Option.is_some (Attribute.get Attrs.opaque typ) ->
       Fun [%expr Ppx_yojson_conv_lib.Yojson_conv.opaque_of_yojson]
@@ -1776,7 +1776,7 @@ module Str_generate_of_yojson = struct
   ;;
 
   let type_of_yojson ~typevar_handling ~path ctyp =
-    let loc = ctyp.ptyp_loc in
+    let loc = { ctyp.ptyp_loc with loc_ghost = true } in
     let fp = type_of_yojson ~typevar_handling ctyp in
     let body =
       match fp with
@@ -1798,11 +1798,15 @@ module Str_generate_of_yojson = struct
 end
 
 module Yojson_of = struct
-  let type_extension ty = Sig_generate_yojson_of.type_of_yojson_of ~loc:ty.ptyp_loc ty
+  let type_extension ty =
+    Sig_generate_yojson_of.type_of_yojson_of
+      ~loc:{ ty.ptyp_loc with loc_ghost = true }
+      ty
+  ;;
 
   let core_type ty =
     Str_generate_yojson_of.yojson_of_type ~typevar_handling:`disallowed_in_type_expr ty
-    |> Fun_or_match.expr ~loc:ty.ptyp_loc
+    |> Fun_or_match.expr ~loc:{ ty.ptyp_loc with loc_ghost = true }
   ;;
 
   let sig_type_decl = Sig_generate_yojson_of.mk_sig
@@ -1814,7 +1818,11 @@ module Yojson_fields = struct
 end
 
 module Of_yojson = struct
-  let type_extension ty = Sig_generate_of_yojson.type_of_of_yojson ~loc:ty.ptyp_loc ty
+  let type_extension ty =
+    Sig_generate_of_yojson.type_of_of_yojson
+      ~loc:{ ty.ptyp_loc with loc_ghost = true }
+      ty
+  ;;
 
   let core_type =
     Str_generate_of_yojson.type_of_yojson ~typevar_handling:`disallowed_in_type_expr
