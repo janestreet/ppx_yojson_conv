@@ -431,17 +431,22 @@ module Str_generate_yojson_of = struct
     : Fun_or_match.t
     =
     let item row =
+      let name_override = Attribute.get Attrs.yojson_polymorphic_variant_name row in
       match row.prf_desc with
-      | Rtag ({ txt = cnstr; _ }, true, []) ->
-        ppat_variant ~loc cnstr None
-        --> [%expr `List [ `String [%e estring ~loc cnstr] ]]
-      | Rtag ({ txt = cnstr; _ }, false, [ tp ]) ->
+      | Rtag (cnstr, true, []) ->
+        let label = Label_with_name.create ~label:cnstr.txt ~name_override in
+        ppat_variant ~loc (Label_with_name.label label) None
+        --> [%expr `List [ `String [%e estring ~loc (Label_with_name.name label)] ]]
+      | Rtag (cnstr, false, [ tp ]) ->
+        let label = Label_with_name.create ~label:cnstr.txt ~name_override in
         let args =
           match tp.ptyp_desc with
           | Ptyp_tuple tps -> tps
           | _ -> [ tp ]
         in
-        let cnstr_expr = [%expr `String [%e estring ~loc cnstr]] in
+        let cnstr_expr =
+          [%expr `String [%e estring ~loc (Label_with_name.name label)]]
+        in
         let yojson_of_args = List.map ~f:(yojson_of_type ~typevar_handling) args in
         let bindings, patts, vars = Fun_or_match.map_tmp_vars ~loc yojson_of_args in
         let patt =
@@ -449,7 +454,7 @@ module Str_generate_yojson_of = struct
           | [ patt ] -> patt
           | _ -> ppat_tuple ~loc patts
         in
-        ppat_variant cnstr ~loc (Some patt)
+        ppat_variant (Label_with_name.label label) ~loc (Some patt)
         --> pexp_let
               ~loc
               Nonrecursive
@@ -813,8 +818,8 @@ module Str_generate_yojson_of = struct
          let renaming = Renaming.of_gadt tps cd in
          let constr_lid = Located.map lident cd.pcd_name in
          let constr_name =
-           Option.value ~default:cd.pcd_name.txt (Attribute.get Attrs.yojson_name cd)
-           |> estring ~loc:cd.pcd_name.loc
+           let label = Label_with_name.of_constructor_declaration cd in
+           Label_with_name.name label |> estring ~loc:cd.pcd_name.loc
          in
          branch_sum
            ~types_being_defined
@@ -967,9 +972,9 @@ module Str_generate_of_yojson = struct
   ;;
 
   (* Generate code for matching malformed Yojsons *)
-  let mk_variant_other_matches loc rev_els call =
-    let coll_structs acc (loc, cnstr) =
-      (pstring ~loc cnstr
+  let mk_variant_other_matches loc ~rev_els call =
+    let coll_structs acc (loc, label) =
+      (pstring ~loc (Label_with_name.name label)
        -->
        match call with
        | `ptag_no_args ->
@@ -988,13 +993,16 @@ module Str_generate_of_yojson = struct
      structured variants, atomic variants + included variant types,
      and structured variants + included variant types. *)
   let split_row_field ~loc (atoms, structs, ainhs, sinhs) row_field =
+    let name_override = Attribute.get Attrs.yojson_polymorphic_variant_name row_field in
     match row_field.prf_desc with
-    | Rtag ({ txt = cnstr; _ }, true, []) ->
-      let tpl = loc, cnstr in
+    | Rtag (cnstr, true, []) ->
+      let label = Label_with_name.create ~label:cnstr.txt ~name_override in
+      let tpl = loc, label in
       tpl :: atoms, structs, `A tpl :: ainhs, sinhs
-    | Rtag ({ txt = cnstr; _ }, false, [ tp ]) ->
+    | Rtag (cnstr, false, [ tp ]) ->
+      let label = Label_with_name.create ~label:cnstr.txt ~name_override in
       let loc = tp.ptyp_loc in
-      atoms, (loc, cnstr) :: structs, ainhs, `S (loc, cnstr, tp, row_field) :: sinhs
+      atoms, (loc, label) :: structs, ainhs, `S (loc, label, tp, row_field) :: sinhs
     | Rinherit inh ->
       let iinh = `I inh in
       atoms, structs, iinh :: ainhs, iinh :: sinhs
@@ -1089,15 +1097,20 @@ module Str_generate_of_yojson = struct
     new_other_matches, true
 
   (* Generate code for matching atomic variants *)
-  and mk_variant_match_atom ~typevar_handling loc full_type rev_atoms_inhs rev_structs =
+  and mk_variant_match_atom ~typevar_handling loc full_type ~rev_atoms_inhs ~rev_structs =
     let coll (other_matches, match_last) = function
-      | `A (loc, cnstr) ->
-        let new_match = pstring ~loc cnstr --> pexp_variant ~loc cnstr None in
+      | `A (loc, label) ->
+        let new_match =
+          pstring ~loc (Label_with_name.name label)
+          --> pexp_variant ~loc (Label_with_name.label label) None
+        in
         new_match :: other_matches, false
       | `I inh ->
         handle_variant_inh ~typevar_handling full_type ~match_last other_matches inh
     in
-    let other_matches = mk_variant_other_matches loc rev_structs `ptag_takes_args in
+    let other_matches =
+      mk_variant_other_matches loc ~rev_els:rev_structs `ptag_takes_args
+    in
     let match_atoms_inhs, match_last =
       List.fold_left ~f:coll ~init:(other_matches, false) rev_atoms_inhs
     in
@@ -1106,11 +1119,12 @@ module Str_generate_of_yojson = struct
   (* Variant conversions *)
 
   (* Match arguments of constructors (variants or sum types) *)
-  and mk_cnstr_args_match ~typevar_handling ~loc ~is_variant cnstr tps =
+  and mk_cnstr_args_match ~typevar_handling ~loc ~is_variant label tps =
+    let cnstr_label = Label_with_name.label label in
     let cnstr vars_expr =
       if is_variant
-      then pexp_variant ~loc cnstr (Some vars_expr)
-      else pexp_construct ~loc (Located.lident ~loc cnstr) (Some vars_expr)
+      then pexp_variant ~loc cnstr_label (Some vars_expr)
+      else pexp_construct ~loc (Located.lident ~loc cnstr_label) (Some vars_expr)
     in
     let bindings, patts, good_arg_match =
       let fps = List.map ~f:(type_of_yojson ~typevar_handling) tps in
@@ -1145,10 +1159,16 @@ module Str_generate_of_yojson = struct
                 _yojson]]]
 
   (* Generate code for matching structured variants *)
-  and mk_variant_match_struct ~typevar_handling loc full_type rev_structs_inhs rev_atoms =
+  and mk_variant_match_struct
+        ~typevar_handling
+        loc
+        full_type
+        ~rev_structs_inhs
+        ~rev_atoms
+    =
     let has_structs_ref = ref false in
     let coll (other_matches, match_last) = function
-      | `S (loc, cnstr, tp, _row) ->
+      | `S (loc, label, tp, _row) ->
         has_structs_ref := true;
         let args =
           match tp.ptyp_desc with
@@ -1160,15 +1180,17 @@ module Str_generate_of_yojson = struct
             ~typevar_handling
             ~loc:tp.ptyp_loc
             ~is_variant:true
-            cnstr
+            label
             args
         in
-        let new_match = [%pat? [%p pstring ~loc cnstr] as _tag] --> expr in
+        let new_match =
+          [%pat? [%p pstring ~loc (Label_with_name.name label)] as _tag] --> expr
+        in
         new_match :: other_matches, false
       | `I inh ->
         handle_variant_inh ~typevar_handling full_type ~match_last other_matches inh
     in
-    let other_matches = mk_variant_other_matches loc rev_atoms `ptag_no_args in
+    let other_matches = mk_variant_other_matches loc ~rev_els:rev_atoms `ptag_no_args in
     let match_structs_inhs, match_last =
       List.fold_left ~f:coll ~init:(other_matches, false) rev_structs_inhs
     in
@@ -1181,7 +1203,12 @@ module Str_generate_of_yojson = struct
       List.fold_left ~f:(split_row_field ~loc) ~init:([], [], [], []) row_field_list
     in
     let match_struct, has_structs =
-      mk_variant_match_struct ~typevar_handling loc full_type rev_structs_inhs rev_atoms
+      mk_variant_match_struct
+        ~typevar_handling
+        loc
+        full_type
+        ~rev_structs_inhs
+        ~rev_atoms
     in
     let maybe_yojson_args_patt =
       if has_structs then [%pat? yojson_args] else [%pat? _]
@@ -1191,8 +1218,8 @@ module Str_generate_of_yojson = struct
             ~typevar_handling
             loc
             full_type
-            rev_atoms_inhs
-            rev_structs
+            ~rev_atoms_inhs
+            ~rev_structs
     ; [%pat? `List (`String atom :: [%p maybe_yojson_args_patt]) as _yojson]
       --> match_struct
     ; [%pat? `List (`List _ :: _) as yojson]
@@ -1520,9 +1547,11 @@ module Str_generate_of_yojson = struct
   (* Sum type conversions *)
   (* Generate matching code for well-formed Yojsons wrt. sum types *)
   let mk_good_sum_matches ~typevar_handling (loc, cds) =
-    List.map cds ~f:(fun cd ->
+    List.map cds ~f:(fun (cd, label) ->
+      let cnstr_label = Label_with_name.label label in
+      let cnstr_name = Label_with_name.name label in
       match cd with
-      | { pcd_name = cnstr; pcd_args = Pcstr_record fields; _ } ->
+      | { pcd_args = Pcstr_record fields; _ } ->
         let expr =
           label_declaration_list_of_yojson
             ~typevar_handling
@@ -1531,54 +1560,44 @@ module Str_generate_of_yojson = struct
             loc
             fields
             ~wrap_expr:(fun e ->
-              pexp_construct ~loc (Located.lident ~loc cnstr.txt) (Some e))
-        in
-        let str =
-          Option.value ~default:cnstr.txt (Attribute.get Attrs.yojson_name cd)
+              pexp_construct ~loc (Located.lident ~loc cnstr_label) (Some e))
         in
         [%pat?
-               `List [ `String ([%p pstring ~loc str] as _tag); `Assoc field_yojsons ] as
-          yojson]
+               `List [ `String ([%p pstring ~loc cnstr_name] as _tag); `Assoc field_yojsons ]
+          as yojson]
         --> expr
-      | { pcd_name = cnstr; pcd_args = Pcstr_tuple []; _ } ->
+      | { pcd_args = Pcstr_tuple []; _ } ->
         Attrs.fail_if_allow_extra_field_cd ~loc cd;
-        let str =
-          Option.value ~default:cnstr.txt (Attribute.get Attrs.yojson_name cd)
-        in
-        [%pat? `List [ `String [%p pstring ~loc str] ]]
-        --> pexp_construct ~loc (Located.lident ~loc cnstr.txt) None
-      | { pcd_name = cnstr; pcd_args = Pcstr_tuple (_ :: _ as tps); _ } ->
+        [%pat? `List [ `String [%p pstring ~loc cnstr_name] ]]
+        --> pexp_construct ~loc (Located.lident ~loc cnstr_label) None
+      | { pcd_args = Pcstr_tuple (_ :: _ as tps); _ } ->
         Attrs.fail_if_allow_extra_field_cd ~loc cd;
-        let str =
-          Option.value ~default:cnstr.txt (Attribute.get Attrs.yojson_name cd)
-        in
         [%pat?
-               `List (`String ([%p pstring ~loc str] as _tag) :: yojson_args) as _yojson]
-        --> mk_cnstr_args_match ~typevar_handling ~loc ~is_variant:false cnstr.txt tps)
+               `List (`String ([%p pstring ~loc cnstr_name] as _tag) :: yojson_args) as
+          _yojson]
+        --> mk_cnstr_args_match ~typevar_handling ~loc ~is_variant:false label tps)
   ;;
 
   (* Generate matching code for malformed Yojsons with good tags
      wrt. sum types *)
   let mk_bad_sum_matches (loc, cds) =
-    List.map cds ~f:(fun cd ->
+    List.map cds ~f:(fun (cd, label) ->
+      let cnstr_name = Label_with_name.name label in
       match cd with
-      | { pcd_name = cnstr; pcd_args = Pcstr_tuple []; _ } ->
-        let str =
-          Option.value ~default:cnstr.txt (Attribute.get Attrs.yojson_name cd)
-        in
-        [%pat? `List (`String [%p pstring ~loc str] :: _) as yojson]
+      | { pcd_args = Pcstr_tuple []; _ } ->
+        [%pat? `List (`String [%p pstring ~loc cnstr_name] :: _) as yojson]
         --> [%expr Ppx_yojson_conv_lib.Yojson_conv_error.stag_no_args _tp_loc yojson]
-      | { pcd_name = cnstr; pcd_args = Pcstr_tuple (_ :: _) | Pcstr_record _; _ } ->
-        let str =
-          Option.value ~default:cnstr.txt (Attribute.get Attrs.yojson_name cd)
-        in
-        [%pat? `String [%p pstring ~loc str] as yojson]
+      | { pcd_args = Pcstr_tuple (_ :: _) | Pcstr_record _; _ } ->
+        [%pat? `String [%p pstring ~loc cnstr_name] as yojson]
         --> [%expr
           Ppx_yojson_conv_lib.Yojson_conv_error.stag_takes_args _tp_loc yojson])
   ;;
 
   (* Generate matching code for sum types *)
   let sum_of_yojson ~typevar_handling (loc, alts) : Fun_or_match.t =
+    let alts =
+      List.map alts ~f:(fun cd -> cd, Label_with_name.of_constructor_declaration cd)
+    in
     Match
       (List.concat
          [ mk_good_sum_matches ~typevar_handling (loc, alts)

@@ -3,7 +3,8 @@ open! Ppxlib
 
 val default : (label_declaration, expression) Attribute.t
 val yojson_key : (label_declaration, string) Attribute.t
-val yojson_name : (constructor_declaration, string) Attribute.t
+val yojson_variant_name : (constructor_declaration, string) Attribute.t
+val yojson_polymorphic_variant_name : (row_field, string) Attribute.t
 val drop_default : (label_declaration, expression option) Attribute.t
 val drop_if : (label_declaration, expression) Attribute.t
 val opaque : (core_type, unit) Attribute.t

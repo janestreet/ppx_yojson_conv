@@ -85,10 +85,18 @@ let yojson_key =
     (fun x -> x)
 ;;
 
-let yojson_name =
+let yojson_variant_name =
   Attribute.declare
     "yojson.name"
     Attribute.Context.constructor_declaration
+    Ast_pattern.(pstr (pstr_eval (estring __) nil ^:: nil))
+    (fun x -> x)
+;;
+
+let yojson_polymorphic_variant_name =
+  Attribute.declare
+    "yojson.name"
+    Attribute.Context.rtag
     Ast_pattern.(pstr (pstr_eval (estring __) nil ^:: nil))
     (fun x -> x)
 ;;

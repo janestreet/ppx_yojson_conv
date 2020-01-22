@@ -268,7 +268,9 @@ end
 module Sum_and_polymorphic_variants = struct
   type poly =
     [ `No_arg
+    | `No_arg_with_renaming[@name "zero_arg"]
     | `One_arg of int
+    | `One_arg_with_renaming of int[@name "one_arg"]
     | `One_tuple of int * string
     | `Two_args of int * string
     ]
@@ -282,12 +284,22 @@ module Sum_and_polymorphic_variants = struct
         let yojson = yojson_of_poly value in
         print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
         require [%here] (poly_of_yojson yojson = value))
-      [ `No_arg; `One_arg 1; `One_tuple (1, "a"); `Two_args (1, "a") ];
+      [ `No_arg
+      ; `No_arg_with_renaming
+      ; `One_arg 1
+      ; `One_arg_with_renaming 1
+      ; `One_tuple (1, "a")
+      ; `Two_args (1, "a")
+      ];
     [%expect
       {|
       (List ((String No_arg)))
+      (List ((String zero_arg)))
       (List (
         (String One_arg)
+        (Int    1)))
+      (List (
+        (String one_arg)
         (Int    1)))
       (List (
         (String One_tuple)
