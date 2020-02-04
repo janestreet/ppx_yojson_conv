@@ -112,7 +112,7 @@ let yojson =
 
 let yojson_poly = Deriving.add_alias "yojson_poly" [ yojson_of; of_yojson_poly ]
 
-let _ =
+let () =
   let primitives =
     Longident.parse (Printf.sprintf "Ppx_yojson_conv_lib.Yojson_conv.Primitives")
   in
