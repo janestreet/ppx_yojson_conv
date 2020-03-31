@@ -36,3 +36,11 @@ let (_ : _) = [%yojson (() : 'a)]
 Line _, characters _-_:
 Error: Extension `yojson' was not translated
 |}]
+
+type 'a t =
+  | None
+  | Something_else of { value : 'a }
+[@@deriving yojson]
+
+[%%expect {|
+|}]

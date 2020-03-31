@@ -705,8 +705,8 @@ module Str_generate_yojson_of = struct
           [%expr
             let bnds =
               match [%e evar ~loc ("v_" ^ name)] with
-              | None -> bnds
-              | Some v ->
+              | Ppx_yojson_conv_lib.Option.None -> bnds
+              | Ppx_yojson_conv_lib.Option.Some v ->
                 let arg = [%e cnv_expr] in
                 let bnd = [%e estring ~loc key], arg in
                 bnd :: bnds
@@ -1322,7 +1322,7 @@ module Str_generate_of_yojson = struct
         let key = Option.value ~default:nm (Attribute.get Attrs.yojson_key ld) in
         (match Attrs.Record_field_handler.Of_yojson.create ~loc ld, ld.pld_type with
          | Some (`yojson_option tp), _ | (None | Some (`default _)), tp ->
-           let inits = [%expr None] :: inits in
+           let inits = [%expr Ppx_yojson_conv_lib.Option.None] :: inits in
            let unrolled =
              Fun_or_match.unroll
                ~loc
@@ -1333,10 +1333,11 @@ module Str_generate_of_yojson = struct
              (pstring ~loc key
               --> [%expr
                 match Ppx_yojson_conv_lib.( ! ) [%e evar ~loc (nm ^ "_field")] with
-                | None ->
+                | Ppx_yojson_conv_lib.Option.None ->
                   let fvalue = [%e unrolled] in
-                  [%e evar ~loc (nm ^ "_field")] := Some fvalue
-                | Some _ ->
+                  [%e evar ~loc (nm ^ "_field")]
+                  := Ppx_yojson_conv_lib.Option.Some fvalue
+                | Ppx_yojson_conv_lib.Option.Some _ ->
                   duplicates := field_name :: Ppx_yojson_conv_lib.( ! ) duplicates])
              :: args
            in
@@ -1373,9 +1374,12 @@ module Str_generate_of_yojson = struct
             | Some (`default _ | `yojson_option _) -> mk_default loc
             | None ->
               has_nonopt_fields := true;
-              ( [%expr Ppx_yojson_conv_lib.poly_equal [%e fld] None, [%e estring ~loc nm]]
+              ( [%expr
+                Ppx_yojson_conv_lib.poly_equal [%e fld] Ppx_yojson_conv_lib.Option.None
+              , [%e estring ~loc nm]]
                 :: bi_lst
-              , [%pat? Some [%p pvar ~loc (nm ^ "_value")]] :: good_patts )
+              , [%pat? Ppx_yojson_conv_lib.Option.Some [%p pvar ~loc (nm ^ "_value")]]
+                :: good_patts )
           in
           let acc = [%expr [%e fld]] :: res_tpls, new_bi_lst, new_good_patts in
           loop acc more_flds
@@ -1400,8 +1404,8 @@ module Str_generate_of_yojson = struct
             | Some (`default default) ->
               [%expr
                 match [%e evar ~loc (nm ^ "_value")] with
-                | None -> [%e default]
-                | Some v -> v]
+                | Ppx_yojson_conv_lib.Option.None -> [%e default]
+                | Ppx_yojson_conv_lib.Option.Some v -> v]
             | Some (`yojson_option _) | None -> evar ~loc (nm ^ "_value")
           in
           Located.lident ~loc nm, value
