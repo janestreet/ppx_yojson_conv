@@ -1,6 +1,6 @@
 open Base
 open Base_yojson
-open Expect_test_helpers_kernel
+open Expect_test_helpers_core
 
 include struct
   [@@@ocaml.warning "-32"]
@@ -759,7 +759,7 @@ end
 
 module Drop_default = struct
   open! Base
-  open Expect_test_helpers_kernel
+  open Expect_test_helpers_core
 
   type t = { a : int } [@@deriving equal]
 

@@ -1,5 +1,5 @@
 (library (name ppx_yojson_conv_test)
- (libraries base expect_test_helpers_kernel base_yojson)
+ (libraries base expect_test_helpers_core base_yojson)
  (flags :standard -w -30)
  (preprocess
   (pps ppx_jane -allow-unannotated-ignores ppx_yojson_conv ppx_compare)))
