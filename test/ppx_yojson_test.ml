@@ -268,9 +268,9 @@ end
 module Sum_and_polymorphic_variants = struct
   type poly =
     [ `No_arg
-    | `No_arg_with_renaming[@name "zero_arg"]
+    | `No_arg_with_renaming [@name "zero_arg"]
     | `One_arg of int
-    | `One_arg_with_renaming of int[@name "one_arg"]
+    | `One_arg_with_renaming of int [@name "one_arg"]
     | `One_tuple of int * string
     | `Two_args of int * string
     ]

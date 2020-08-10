@@ -77,7 +77,6 @@ Error (warning 22): [@yojson_drop_default] is deprecated: please use one of:
 |}]
 
 type t = { x : unit [@yojson.opaque] } [@@deriving yojson_of]
-
 type t = { x : unit [@yojson.opaque] } [@@deriving of_yojson]
 
 [%%expect
@@ -95,7 +94,6 @@ Did you put it at the wrong level?
 |}]
 
 type t = { x : unit [@yojson.option] } [@@deriving yojson_of]
-
 type t = { x : unit [@yojson.option] } [@@deriving of_yojson]
 
 [%%expect

@@ -213,8 +213,7 @@ let make_type_rigid ~type_name =
         let ptyp_desc =
           match ty.ptyp_desc with
           | Ptyp_var s ->
-            Ptyp_constr
-              (Located.lident ~loc:ty.ptyp_loc (rigid_type_var ~type_name s), [])
+            Ptyp_constr (Located.lident ~loc:ty.ptyp_loc (rigid_type_var ~type_name s), [])
           | desc -> super#core_type_desc desc
         in
         { ty with ptyp_desc }
@@ -342,8 +341,8 @@ module Sig_generate_of_yojson = struct
     | true, `Surely_not ->
       Location.raise_errorf
         ~loc
-        "Sig_generate_of_yojson.sig_of_td: yojson_poly annotation but type is surely \
-         not a polymorphic variant"
+        "Sig_generate_of_yojson.sig_of_td: yojson_poly annotation but type is surely not \
+         a polymorphic variant"
     | false, (`Surely_not | `Maybe) -> [ of_yojson_item ]
     | (true | false), `Definitely | true, `Maybe ->
       [ of_yojson_item
@@ -444,9 +443,7 @@ module Str_generate_yojson_of = struct
           | Ptyp_tuple tps -> tps
           | _ -> [ tp ]
         in
-        let cnstr_expr =
-          [%expr `String [%e estring ~loc (Label_with_name.name label)]]
-        in
+        let cnstr_expr = [%expr `String [%e estring ~loc (Label_with_name.name label)]] in
         let yojson_of_args = List.map ~f:(yojson_of_type ~typevar_handling) args in
         let bindings, patts, vars = Fun_or_match.map_tmp_vars ~loc yojson_of_args in
         let patt =
@@ -561,8 +558,7 @@ module Str_generate_yojson_of = struct
     patt, expr
   ;;
 
-  let disallow_type_variables_and_recursive_occurrences ~types_being_defined ~loc ~why tp
-    =
+  let disallow_type_variables_and_recursive_occurrences ~types_being_defined ~loc ~why tp =
     let disallow_variables =
       let iter =
         object
@@ -605,8 +601,8 @@ module Str_generate_yojson_of = struct
                     "[@yojson_drop_default.%s] was used, but the type of the field \
                      contains a type defined in the current recursive block: %s.\n\
                      This is not supported.\n\
-                     Consider using [@yojson_drop_if _] or \
-                     [@yojson_drop_default.yojson] instead."
+                     Consider using [@yojson_drop_if _] or [@yojson_drop_default.yojson] \
+                     instead."
                     (match why with
                      | `compare -> "compare"
                      | `equal -> "equal")
@@ -639,28 +635,26 @@ module Str_generate_yojson_of = struct
         Inspect_yojson
           (fun ~cnv_expr loc yojson_expr ->
              [%expr
-               Ppx_yojson_conv_lib.poly_equal
-                 ([%e cnv_expr] [%e default])
-                 [%e yojson_expr]])
+               Ppx_yojson_conv_lib.poly_equal ([%e cnv_expr] [%e default]) [%e yojson_expr]])
       | (`no_arg | `func _ | `compare | `equal) as how ->
         let equality_f loc =
           match how with
           | `no_arg ->
             [%expr
-              (Ppx_yojson_conv_lib.poly_equal [@ocaml.ppwarning
-                 "[@yojson_drop_default] is deprecated: \
-                  please use one of:\n\
-                  - [@yojson_drop_default f] and give an \
-                  explicit equality function ([f = \
-                  Poly.(=)] corresponds to the old \
-                  behavior)\n\
-                  - [@yojson_drop_default.compare] if \
-                  the type supports [%compare]\n\
-                  - [@yojson_drop_default.equal] if the \
-                  type supports [%equal]\n\
-                  - [@yojson_drop_default.yojson] if you \
-                  want to compare the yojson \
-                  representations\n"])]
+              Ppx_yojson_conv_lib.poly_equal [@ocaml.ppwarning
+                "[@yojson_drop_default] is deprecated: \
+                 please use one of:\n\
+                 - [@yojson_drop_default f] and give an \
+                 explicit equality function ([f = \
+                 Poly.(=)] corresponds to the old \
+                 behavior)\n\
+                 - [@yojson_drop_default.compare] if the \
+                 type supports [%compare]\n\
+                 - [@yojson_drop_default.equal] if the \
+                 type supports [%equal]\n\
+                 - [@yojson_drop_default.yojson] if you \
+                 want to compare the yojson \
+                 representations\n"]]
           | `func f -> f
           | `compare ->
             disallow_type_variables_and_recursive_occurrences
@@ -677,14 +671,12 @@ module Str_generate_yojson_of = struct
               tp;
             [%expr [%equal: [%t tp]]]
         in
-        Inspect_value
-          (fun loc expr -> [%expr [%e equality_f loc] [%e default] [%e expr]])
+        Inspect_value (fun loc expr -> [%expr [%e equality_f loc] [%e default] [%e expr]])
     in
     yojson_of_record_field ~renaming patt expr name tp ?yojson_of is_empty key
   ;;
 
-  let yojson_of_label_declaration_list ~types_being_defined ~renaming loc flds ~wrap_expr
-    =
+  let yojson_of_label_declaration_list ~types_being_defined ~renaming loc flds ~wrap_expr =
     let coll ((patt : (Longident.t loc * pattern) list), expr) ld =
       let name = ld.pld_name.txt in
       let key =
@@ -1159,12 +1151,7 @@ module Str_generate_of_yojson = struct
                 _yojson]]]
 
   (* Generate code for matching structured variants *)
-  and mk_variant_match_struct
-        ~typevar_handling
-        loc
-        full_type
-        ~rev_structs_inhs
-        ~rev_atoms
+  and mk_variant_match_struct ~typevar_handling loc full_type ~rev_structs_inhs ~rev_atoms
     =
     let has_structs_ref = ref false in
     let coll (other_matches, match_last) = function
@@ -1203,16 +1190,9 @@ module Str_generate_of_yojson = struct
       List.fold_left ~f:(split_row_field ~loc) ~init:([], [], [], []) row_field_list
     in
     let match_struct, has_structs =
-      mk_variant_match_struct
-        ~typevar_handling
-        loc
-        full_type
-        ~rev_structs_inhs
-        ~rev_atoms
+      mk_variant_match_struct ~typevar_handling loc full_type ~rev_structs_inhs ~rev_atoms
     in
-    let maybe_yojson_args_patt =
-      if has_structs then [%pat? yojson_args] else [%pat? _]
-    in
+    let maybe_yojson_args_patt = if has_structs then [%pat? yojson_args] else [%pat? _] in
     [ [%pat? `List [ `String atom ] as _yojson]
       --> mk_variant_match_atom
             ~typevar_handling
@@ -1435,8 +1415,7 @@ module Str_generate_of_yojson = struct
 
   (* Generate code for converting record fields *)
 
-  let mk_cnv_fields ~typevar_handling ~allow_extra_fields has_poly (loc, flds) ~wrap_expr
-    =
+  let mk_cnv_fields ~typevar_handling ~allow_extra_fields has_poly (loc, flds) ~wrap_expr =
     let expr_ref_inits, _mc_no_args_fields, mc_fields_with_args =
       mk_extract_fields ~typevar_handling ~allow_extra_fields (loc, flds)
     in
@@ -1530,8 +1509,7 @@ module Str_generate_of_yojson = struct
   ;;
 
   (* Generate matching code for records *)
-  let record_of_yojson ~typevar_handling ~allow_extra_fields (loc, flds) : Fun_or_match.t
-    =
+  let record_of_yojson ~typevar_handling ~allow_extra_fields (loc, flds) : Fun_or_match.t =
     Match
       [ [%pat? `Assoc field_yojsons as yojson]
         --> label_declaration_list_of_yojson
@@ -1593,8 +1571,7 @@ module Str_generate_of_yojson = struct
         --> [%expr Ppx_yojson_conv_lib.Yojson_conv_error.stag_no_args _tp_loc yojson]
       | { pcd_args = Pcstr_tuple (_ :: _) | Pcstr_record _; _ } ->
         [%pat? `String [%p pstring ~loc cnstr_name] as yojson]
-        --> [%expr
-          Ppx_yojson_conv_lib.Yojson_conv_error.stag_takes_args _tp_loc yojson])
+        --> [%expr Ppx_yojson_conv_lib.Yojson_conv_error.stag_takes_args _tp_loc yojson])
   ;;
 
   (* Generate matching code for sum types *)
@@ -1822,9 +1799,7 @@ end
 
 module Yojson_of = struct
   let type_extension ty =
-    Sig_generate_yojson_of.type_of_yojson_of
-      ~loc:{ ty.ptyp_loc with loc_ghost = true }
-      ty
+    Sig_generate_yojson_of.type_of_yojson_of ~loc:{ ty.ptyp_loc with loc_ghost = true } ty
   ;;
 
   let core_type ty =
@@ -1842,9 +1817,7 @@ end
 
 module Of_yojson = struct
   let type_extension ty =
-    Sig_generate_of_yojson.type_of_of_yojson
-      ~loc:{ ty.ptyp_loc with loc_ghost = true }
-      ty
+    Sig_generate_of_yojson.type_of_of_yojson ~loc:{ ty.ptyp_loc with loc_ghost = true } ty
   ;;
 
   let core_type =

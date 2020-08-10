@@ -129,8 +129,8 @@ let fail_if_allow_extra_field_td ~loc x =
       Location.raise_errorf
         ~loc
         "ppx_yojson_conv: [@@@@allow_extra_fields] only works on records. For inline \
-         records, do: type t = A of { a : int } [@@allow_extra_fields] | B \
-         [@@@@deriving yojson]"
+         records, do: type t = A of { a : int } [@@allow_extra_fields] | B [@@@@deriving \
+         yojson]"
     | _ ->
       Location.raise_errorf
         ~loc
