@@ -1,6 +1,4 @@
 #+TITLE: ppx\_yojson\_conv
-#+PARENT: ../README.md
-#+UUID: f87e5f8e-9ca2-37f8-cbdc-c6a84884fedf
 
 * [@@deriving yojson]
 
