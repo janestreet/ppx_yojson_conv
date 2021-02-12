@@ -1330,8 +1330,9 @@ module Str_generate_of_yojson = struct
          then [%expr ()]
          else
            [%expr
-             if Ppx_yojson_conv_lib.( ! )
-                  Ppx_yojson_conv_lib.Yojson_conv.record_check_extra_fields
+             if
+               Ppx_yojson_conv_lib.( ! )
+                 Ppx_yojson_conv_lib.Yojson_conv.record_check_extra_fields
              then extra := field_name :: Ppx_yojson_conv_lib.( ! ) extra
              else ()])
       ]
