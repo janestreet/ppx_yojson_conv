@@ -248,7 +248,7 @@ module Types = struct
   ;;
 
   let%expect_test _ =
-    let open Caml in
+    let open Stdlib in
     let tbl = Hashtbl.create 10 in
     let _ = Hashtbl.add tbl "key_1" "value_1" in
     let _ = Hashtbl.add tbl "key_2" "value_2" in
