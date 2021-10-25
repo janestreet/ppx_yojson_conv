@@ -1344,7 +1344,7 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag"
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected variant constructor"
          "[\"Z\"]") |}]
     ;;
 
@@ -1354,7 +1354,7 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag"
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected variant constructor"
          "[\"A\"]") |}]
     ;;
 
@@ -1385,7 +1385,7 @@ module Exceptions = struct
       [%expect
         {|
         (Of_yojson_error
-         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected sum tag"
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected variant constructor"
          "[\"C\",\"string\"]") |}]
     ;;
 

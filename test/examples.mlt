@@ -10,7 +10,7 @@ end
   {|
 Exception:
 (Of_yojson_error
-  "examples.mlt.Position_for_polymorphic_variant_errors.t1_of_yojson: unexpected sum tag"
+  "examples.mlt.Position_for_polymorphic_variant_errors.t1_of_yojson: unexpected variant constructor"
   "\"C\"")
 |}]
 
