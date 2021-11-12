@@ -2,6 +2,9 @@ open Base
 open Base_yojson
 open Expect_test_helpers_core
 
+(* Module names below are used in error messages being tested. *)
+[@@@warning "-unused-module"]
+
 include struct
   [@@@ocaml.warning "-32"]
 
@@ -633,9 +636,13 @@ module No_unused_value_warnings : sig end = struct
     type t = [ `A ] [@@deriving yojson]
   end
 
-  module Empty = struct end
+  include struct
+    [@@@warning "-unused-module"]
 
-  module No_warning2 (X : sig
+    module Empty = struct end
+  end
+
+  module No_warning2 (_ : sig
       type t [@@deriving yojson]
     end) =
   struct end
@@ -658,9 +665,9 @@ module No_unused_value_warnings : sig end = struct
       S) :
       S)
 
-  module Nested_functors (M1 : sig
+  module Nested_functors (_ : sig
       type t [@@deriving yojson]
-    end) (M2 : sig
+    end) (_ : sig
             type t [@@deriving yojson]
           end) =
   struct end
@@ -1256,8 +1263,8 @@ module Applicative_functor_types = struct
 
     let s__t_of_yojson
           (type k1 k2)
-          (module K1 : Of_yojsonable with type t = k1)
-          (module K2 : Of_yojsonable with type t = k2)
+          (module _ : Of_yojsonable with type t = k1)
+          (module _ : Of_yojsonable with type t = k2)
           (_ : Yojson.t)
       : (k1, k2) t
       =
