@@ -15,7 +15,6 @@ end = struct
 end
 
 type 'a v = 'a w
-
 and 'a w = A of 'a v [@@deriving yojson]
 
 type 'a v_ = 'a v [@@deriving yojson]
@@ -26,7 +25,6 @@ module M3 : sig
   type 'a w = 'a v_ [@@deriving yojson]
 end = struct
   type nonrec 'a v = 'a w
-
   and 'a w = 'a v [@@deriving yojson]
 end
 
@@ -39,7 +37,6 @@ end = struct
 end
 
 type t1 = A of t2
-
 and t2 = B of t1 [@@deriving yojson]
 
 module C : sig
@@ -47,12 +44,10 @@ module C : sig
   type nonrec t2 = t2 [@@deriving yojson]
 end = struct
   type nonrec t1 = t1 = A of t2
-
   and t2 = t2 = B of t1 [@@deriving yojson]
 end
 
 type 'a v1 = A of 'a v2
-
 and 'a v2 = B of 'a v1 [@@deriving yojson]
 
 module D : sig
@@ -60,7 +55,6 @@ module D : sig
   type nonrec 'a v2 = 'a v2 [@@deriving yojson]
 end = struct
   type nonrec 'a v1 = 'a v1 = A of 'a v2
-
   and 'a v2 = 'a v2 = B of 'a v1 [@@deriving yojson]
 end
 
@@ -71,7 +65,6 @@ module E = struct
 end
 
 type 'a y1 = A of 'a y2
-
 and 'a y2 = B of 'a y1
 
 module F : sig
@@ -79,7 +72,6 @@ module F : sig
   type nonrec 'a y1 = 'a y1
 end = struct
   type nonrec 'a y1 = 'a y1 = A of 'a y2
-
   and 'a y2 = B of 'a y1
 end
 

@@ -83,14 +83,16 @@ type t = { x : unit [@yojson.opaque] } [@@deriving of_yojson]
   {|
 Line _, characters _-_:
 Error: Attribute `yojson.opaque' was not used.
-Hint: `yojson.opaque' is available for core types but is used here in the
-context of a label declaration.
-Did you put it at the wrong level?
+       Hint: `yojson.opaque' is available for core types but is used here in
+       the
+       context of a label declaration.
+       Did you put it at the wrong level?
 Line _, characters _-_:
 Error: Attribute `yojson.opaque' was not used.
-Hint: `yojson.opaque' is available for core types but is used here in the
-context of a label declaration.
-Did you put it at the wrong level?
+       Hint: `yojson.opaque' is available for core types but is used here in
+       the
+       context of a label declaration.
+       Did you put it at the wrong level?
 |}]
 
 type t = { x : unit [@yojson.option] } [@@deriving yojson_of]
@@ -141,9 +143,7 @@ Error: ppx_yojson_conv: yojson_fields only works on records
 |}]
 
 type t = { x : u }
-
 and vvv = int
-
 and u = { y : t } [@@deriving yojson_fields]
 
 [%%expect
