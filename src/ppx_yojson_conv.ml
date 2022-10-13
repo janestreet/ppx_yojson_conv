@@ -111,22 +111,3 @@ let yojson =
 ;;
 
 let yojson_poly = Deriving.add_alias "yojson_poly" [ yojson_of; of_yojson_poly ]
-
-let () =
-  let primitives =
-    Longident.parse (Printf.sprintf "Ppx_yojson_conv_lib.Yojson_conv.Primitives")
-  in
-  Driver.register_transformation "Ppx_yojson_conv.enclose_impl" ~enclose_impl:(function
-    | None -> [], []
-    | Some loc ->
-      let loc = { loc with loc_end = loc.loc_start } in
-      ( [ Ast_builder.Default.(
-          pstr_open
-            ~loc
-            (open_infos
-               ~loc
-               ~expr:(pmod_ident ~loc (Located.mk ~loc primitives))
-               ~override:Override))
-        ]
-      , [] ))
-;;

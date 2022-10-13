@@ -1,3 +1,5 @@
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+
 type t = float [@@deriving yojson]
 
 module M : sig

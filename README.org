@@ -40,9 +40,9 @@ type int_pair = (int * int) [@@deriving yojson_of]
 type int_pair = (int * int) [@@deriving of_yojson]
 #+end_src
 
-Note that Yojson-converters for primitive types are brought into scope
-automatically. The ppx rewriter adds the following prefix at the top of
-implementations =open! Ppx_yojson_conv_lib.Yojson_conv.Primitives=
+Note that Yojson-converters for primitive types like =int= need to be brought
+into scope in order for the ppx to use them, for example by adding =open
+Ppx_yojson_conv_lib.Yojson_conv.Primitives= at the beginning of the file.
 
 It's also possible to construct converters based on type expressions,
 /i.e./:
