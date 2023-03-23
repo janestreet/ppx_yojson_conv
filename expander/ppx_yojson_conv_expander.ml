@@ -1424,10 +1424,7 @@ module Str_generate_of_yojson = struct
         flds
         expr_ref_inits
         ~f:(fun { pld_name = { txt = name; loc }; _ } init ->
-          value_binding
-            ~loc
-            ~pat:(pvar ~loc (name ^ "_field"))
-            ~expr:[%expr ref [%e init]])
+          value_binding ~loc ~pat:(pvar ~loc (name ^ "_field")) ~expr:[%expr ref [%e init]])
     in
     pexp_let
       ~loc
@@ -1555,8 +1552,7 @@ module Str_generate_of_yojson = struct
       | { pcd_args = Pcstr_tuple (_ :: _ as tps); _ } ->
         Attrs.fail_if_allow_extra_field_cd ~loc cd;
         [%pat?
-               `List (`String ([%p pstring ~loc cnstr_name] as _tag) :: yojson_args) as
-          _yojson]
+               `List (`String ([%p pstring ~loc cnstr_name] as _tag) :: yojson_args) as _yojson]
         --> mk_cnstr_args_match ~typevar_handling ~loc ~is_variant:false label tps)
   ;;
 
