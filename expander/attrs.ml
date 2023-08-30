@@ -123,9 +123,9 @@ let fail_if_allow_extra_field_td ~loc x =
     match x.ptype_kind with
     | Ptype_variant cds
       when List.exists cds ~f:(fun cd ->
-        match cd.pcd_args with
-        | Pcstr_record _ -> true
-        | _ -> false) ->
+             match cd.pcd_args with
+             | Pcstr_record _ -> true
+             | _ -> false) ->
       Location.raise_errorf
         ~loc
         "ppx_yojson_conv: [@@@@allow_extra_fields] only works on records. For inline \

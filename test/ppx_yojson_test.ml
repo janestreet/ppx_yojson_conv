@@ -643,8 +643,8 @@ module No_unused_value_warnings : sig end = struct
   end
 
   module No_warning2 (_ : sig
-      type t [@@deriving yojson]
-    end) =
+    type t [@@deriving yojson]
+  end) =
   struct end
 
   (* this one can't be handled (what if Empty was a functor, huh?) *)
@@ -666,10 +666,10 @@ module No_unused_value_warnings : sig end = struct
       S)
 
   module Nested_functors (_ : sig
-      type t [@@deriving yojson]
-    end) (_ : sig
-            type t [@@deriving yojson]
-          end) =
+    type t [@@deriving yojson]
+  end) (_ : sig
+    type t [@@deriving yojson]
+  end) =
   struct end
 
   let () =
@@ -684,13 +684,13 @@ module No_unused_value_warnings : sig end = struct
 
   module Include = struct
     include (
-    struct
-      type t = int [@@deriving yojson]
-    end :
-    sig
-      type t [@@deriving yojson]
-    end
-    with type t := int)
+      struct
+        type t = int [@@deriving yojson]
+      end :
+        sig
+          type t [@@deriving yojson]
+        end
+        with type t := int)
   end
 end
 
@@ -851,14 +851,14 @@ module Drop_if = struct
 
   type u =
     { a : int
-          [@yojson_drop_if
-            fun x ->
-              (* pa_type_conv used to drop parens altogether, causing type errors in the
+         [@yojson_drop_if
+           fun x ->
+             (* pa_type_conv used to drop parens altogether, causing type errors in the
                  following code *)
-              let pair = x, 2 in
-              match Some pair with
-              | None -> true
-              | Some (x, y) -> Poly.(x = y)]
+             let pair = x, 2 in
+             match Some pair with
+             | None -> true
+             | Some (x, y) -> Poly.(x = y)]
     }
   [@@deriving yojson]
 end
@@ -1249,10 +1249,10 @@ module Applicative_functor_types = struct
     type ('k1, 'k2) t
 
     module S (K1 : sig
-        type t
-      end) (K2 : sig
-              type t
-            end) =
+      type t
+    end) (K2 : sig
+      type t
+    end) =
     struct
       type nonrec t = (K1.t, K2.t) t
     end
@@ -1262,10 +1262,10 @@ module Applicative_functor_types = struct
     end
 
     let s__t_of_yojson
-          (type k1 k2)
-          (module _ : Of_yojsonable with type t = k1)
-          (module _ : Of_yojsonable with type t = k2)
-          (_ : Yojson.t)
+      (type k1 k2)
+      (module _ : Of_yojsonable with type t = k1)
+      (module _ : Of_yojsonable with type t = k2)
+      (_ : Yojson.t)
       : (k1, k2) t
       =
       assert false
