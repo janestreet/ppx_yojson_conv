@@ -87,6 +87,7 @@ Error: Attribute `yojson.opaque' was not used.
        the
        context of a label declaration.
        Did you put it at the wrong level?
+
 Line _, characters _-_:
 Error: Attribute `yojson.opaque' was not used.
        Hint: `yojson.opaque' is available for core types but is used here in
@@ -102,6 +103,7 @@ type t = { x : unit [@yojson.option] } [@@deriving of_yojson]
   {|
 Line _, characters _-_:
 Error: ppx_yojson_conv: [@yojson.option] is only allowed on type [_ option].
+
 Line _, characters _-_:
 Error: ppx_yojson_conv: [@yojson.option] is only allowed on type [_ option].
 |}]
