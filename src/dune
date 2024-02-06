@@ -1,3 +1,7 @@
-(library (name ppx_yojson_conv) (public_name ppx_yojson_conv)
- (kind ppx_deriver) (libraries ppxlib ppx_yojson_conv_expander)
- (preprocess (pps ppx_js_style)))
+(library
+ (name ppx_yojson_conv)
+ (public_name ppx_yojson_conv)
+ (kind ppx_deriver)
+ (libraries ppxlib ppx_yojson_conv_expander)
+ (preprocess
+  (pps ppx_js_style)))
