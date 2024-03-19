@@ -43,6 +43,4 @@ type 'a t =
   | Something_else of { value : 'a }
 [@@deriving yojson]
 
-[%%expect
-  {|
-|}]
+[%%expect {| |}]

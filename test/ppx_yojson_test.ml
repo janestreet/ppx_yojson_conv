@@ -23,9 +23,7 @@ module Fields = struct
 
   let%expect_test _ =
     print_s [%sexp (yojson_fields_of_ty : string list)];
-    [%expect {|
-     (x some some)
-  |}]
+    [%expect {| (x some some) |}]
   ;;
 end
 
@@ -44,9 +42,9 @@ module Option = struct
     if None = c.x then Stdio.print_endline "x = None";
     if None = c.y then Stdio.print_endline "y = None";
     [%expect {|
-     x = None
-     y = None
-  |}]
+      x = None
+      y = None
+      |}]
   ;;
 end
 
@@ -68,9 +66,7 @@ module Default_omit = struct
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (ty_of_yojson yojson = value);
     require [%here] (ty_of_yojson yojson' = value);
-    [%expect {|
-     (Assoc ((x Null) (b (Int 1))))
-  |}]
+    [%expect {| (Assoc ((x Null) (b (Int 1)))) |}]
   ;;
 end
 
@@ -95,7 +91,8 @@ module Tuple = struct
       (List (
         (Int    1)
         (Float  2)
-        (String example))) |}]
+        (String example)))
+      |}]
   ;;
 end
 
@@ -134,7 +131,8 @@ module Types = struct
         (String baddecaf)
         (String c)
         Null
-        (Float 1))) |}]
+        (Float 1)))
+      |}]
   ;;
 
   type lt = int lazy_t [@@deriving yojson]
@@ -147,8 +145,7 @@ module Types = struct
         require [%here] (Yojson.Safe.equal (yojson_of_lt value) yojson);
         require [%here] Poly.(lt_of_yojson yojson = value))
       [ lazy 1 ];
-    [%expect {|
-      (Int 1) |}]
+    [%expect {| (Int 1) |}]
   ;;
 
   type opt = int option [@@deriving yojson, equal]
@@ -165,7 +162,8 @@ module Types = struct
       [ Some 1; None ];
     [%expect {|
       (Int 1)
-      Null |}]
+      Null
+      |}]
   ;;
 
   let%expect_test _ =
@@ -182,7 +180,8 @@ module Types = struct
       (List ((Int 1)))
       (List (
         (Int 1)
-        (Int 2))) |}]
+        (Int 2)))
+      |}]
   ;;
 
   let%expect_test _ =
@@ -198,7 +197,8 @@ module Types = struct
       (List ((Int 1)))
       (List (
         (Int 1)
-        (Int 2))) |}]
+        (Int 2)))
+      |}]
   ;;
 
   let%expect_test _ =
@@ -211,7 +211,8 @@ module Types = struct
     [%expect {|
       1
       1
-      1 |}]
+      1
+      |}]
   ;;
 
   let%expect_test _ =
@@ -223,7 +224,8 @@ module Types = struct
       [ `Int 1; `Intlit "1" ];
     [%expect {|
       1
-      1 |}]
+      1
+      |}]
   ;;
 
   let%expect_test _ =
@@ -235,7 +237,8 @@ module Types = struct
       [ `Int 1; `Intlit "1" ];
     [%expect {|
       1
-      1 |}]
+      1
+      |}]
   ;;
 
   let%expect_test _ =
@@ -247,7 +250,8 @@ module Types = struct
       [ `Int 1; `Intlit "1" ];
     [%expect {|
       1
-      1 |}]
+      1
+      |}]
   ;;
 
   let%expect_test _ =
@@ -264,7 +268,8 @@ module Types = struct
       (List (
         (List ((String key_1) (String value_1)))
         (List ((String key_2) (String value_2)))
-        (List ((String key_3) (String value_3))))) |}]
+        (List ((String key_3) (String value_3)))))
+      |}]
   ;;
 end
 
@@ -311,7 +316,8 @@ module Sum_and_polymorphic_variants = struct
       (List (
         (String Two_args)
         (Int    1)
-        (String a))) |}]
+        (String a)))
+      |}]
   ;;
 
   type nominal =
@@ -344,7 +350,8 @@ module Sum_and_polymorphic_variants = struct
       (List (
         (String Two_args)
         (Int    1)
-        (String a))) |}]
+        (String a)))
+      |}]
   ;;
 end
 
@@ -383,7 +390,8 @@ module Name = struct
         (Int    1)
         (String a)))
       (List ((String name_5) (Assoc ((a (Int 1))))))
-      (List ((String "") (Assoc ((b (Int 1)))))) |}]
+      (List ((String "") (Assoc ((b (Int 1))))))
+      |}]
   ;;
 end
 
@@ -408,7 +416,8 @@ module Records = struct
         (b (
           List (
             (List ((Float 1)   (String a)))
-            (List ((Float 2.3) (String b)))))))) |}]
+            (List ((Float 2.3) (String b))))))))
+      |}]
   ;;
 end
 
@@ -438,7 +447,8 @@ module Keys = struct
         (key_b (Int 2))
         (key_c (Int 3))
         (key_d (Int 4))
-        (""    (Int 5)))) |}]
+        (""    (Int 5))))
+      |}]
   ;;
 end
 
@@ -467,7 +477,8 @@ module Inline_records = struct
           (b (
             List (
               (List ((Float 1)   (String a)))
-              (List ((Float 2.3) (String b)))))))))) |}]
+              (List ((Float 2.3) (String b))))))))))
+      |}]
   ;;
 
   let%expect_test _ =
@@ -478,7 +489,8 @@ module Inline_records = struct
     [%expect {|
       (List (
         (String B)
-        (Int    100))) |}]
+        (Int    100)))
+      |}]
   ;;
 end
 
@@ -581,7 +593,8 @@ module Polymorphic_variant_inclusion = struct
       (List (
         (String C5)
         (Float  1.5)))
-      (List ((String C6))) |}]
+      (List ((String C6)))
+      |}]
   ;;
 
   type sub1_alias = sub1 [@@deriving yojson_poly, equal]
@@ -608,7 +621,8 @@ module Polymorphic_variant_inclusion = struct
       (List ((String A)))
       (List ((String C1)))
       (List ((String C2)))
-      (List ((String D))) |}]
+      (List ((String D)))
+      |}]
   ;;
 end
 
@@ -893,8 +907,7 @@ module Omit_nil = struct
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (t_of_yojson yojson = value);
     require [%here] (t_of_yojson yojson' = value);
-    [%expect {|
-      (Assoc ()) |}]
+    [%expect {| (Assoc ()) |}]
   ;;
 
   type t2 = A of { a : int option [@yojson.option] } [@@deriving yojson, equal]
@@ -963,7 +976,8 @@ module True_and_false = struct
     [%expect {|
       (List (
         (String True)
-        (Int    1))) |}]
+        (Int    1)))
+      |}]
   ;;
 
   let%expect_test _ =
@@ -974,7 +988,8 @@ module True_and_false = struct
     [%expect {|
       (List (
         (String False)
-        (Int    0))) |}]
+        (Int    0)))
+      |}]
   ;;
 
   type v =
@@ -990,8 +1005,7 @@ module True_and_false = struct
     let yojson = yojson_of_v value in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] (v_of_yojson yojson = value);
-    [%expect {|
-      (List ((String True))) |}]
+    [%expect {| (List ((String True))) |}]
   ;;
 
   let%expect_test _ =
@@ -1002,7 +1016,8 @@ module True_and_false = struct
     [%expect {|
       (List (
         (String False)
-        (Int    0))) |}]
+        (Int    0)))
+      |}]
   ;;
 end
 
@@ -1029,7 +1044,8 @@ module Gadt = struct
         (String Packed)
         (Int    2)
         (String _)
-        (String <opaque>))) |}]
+        (String <opaque>)))
+      |}]
   ;;
 
   (* Safe.to_channel stderr ([%yojson_of: int t] (Packed (2, "asd", 1.))) *)
@@ -1042,7 +1058,8 @@ module Gadt = struct
     [%expect {|
       (List (
         (String A)
-        (Int    2))) |}]
+        (Int    2)))
+      |}]
   ;;
 
   (* recursive *)
@@ -1051,8 +1068,7 @@ module Gadt = struct
   let%expect_test _ =
     let yojson = [%yojson_of: v] (A (Some (A None))) in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-    [%expect {|
-      (List ((String A) (List ((String A) Null)))) |}]
+    [%expect {| (List ((String A) (List ((String A) Null)))) |}]
   ;;
 
   (* implicit existential variable *)
@@ -1067,7 +1083,8 @@ module Gadt = struct
         (String A)
         (String _)
         (Int    2)
-        (String <fun>))) |}]
+        (String <fun>)))
+      |}]
   ;;
 
   (* tricky variable naming *)
@@ -1079,7 +1096,8 @@ module Gadt = struct
     [%expect {|
       (List (
         (String A)
-        (String _))) |}]
+        (String _)))
+      |}]
   ;;
 
   (* interaction with inline record *)
@@ -1088,8 +1106,7 @@ module Gadt = struct
   let%expect_test _ =
     let yojson = [%yojson_of: int x2] (A { x = 1 }) in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-    [%expect {|
-      (List ((String A) (Assoc ((x (Int 1)))))) |}]
+    [%expect {| (List ((String A) (Assoc ((x (Int 1)))))) |}]
   ;;
 
   (* unused but colliding variables *)
@@ -1098,8 +1115,7 @@ module Gadt = struct
   let%expect_test _ =
     let yojson = [%yojson_of: (int, int) y] A in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-    [%expect {|
-      (List ((String A))) |}]
+    [%expect {| (List ((String A))) |}]
   ;;
 
   (* making sure we're not reversing parameters *)
@@ -1114,7 +1130,8 @@ module Gadt = struct
         (String A)
         (List (
           (Int    1)
-          (String a))))) |}]
+          (String a)))))
+      |}]
   ;;
 
   (* interaction with universal quantifiers *)
@@ -1123,8 +1140,7 @@ module Gadt = struct
   let%expect_test _ =
     let yojson = [%yojson_of: unit z2] (A { x = None }) in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
-    [%expect {|
-      (List ((String A) (Assoc ((x Null))))) |}]
+    [%expect {| (List ((String A) (Assoc ((x Null))))) |}]
   ;;
 end
 
@@ -1135,8 +1151,7 @@ module Anonymous_variable = struct
     let yojson = [%yojson_of: _ t] 2 in
     print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
     require [%here] Poly.([%of_yojson: _ t] yojson = 2);
-    [%expect {|
-      (Int 2) |}]
+    [%expect {| (Int 2) |}]
   ;;
 
   (* making sure we don't generate signatures like (_ -> Safe.t) -> _ t -> Safe.t which
@@ -1191,7 +1206,8 @@ module Opaque = struct
         (String <opaque>)))
       (Of_yojson_error
        "opaque_of_yojson: cannot convert opaque values"
-       "\"<opaque>\"") |}]
+       "\"<opaque>\"")
+      |}]
   ;;
 
   type u = ([ `A of int ][@yojson.opaque]) [@@deriving yojson]
@@ -1206,7 +1222,8 @@ module Opaque = struct
       (String <opaque>)
       (Of_yojson_error
        "opaque_of_yojson: cannot convert opaque values"
-       "\"<opaque>\"") |}]
+       "\"<opaque>\"")
+      |}]
   ;;
 end
 
@@ -1309,7 +1326,8 @@ module Allow_extra_fields = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Allow_extra_fields.M1.t1_of_yojson: extra fields: b"
-         "{\"a\":1,\"b\":2}") |}]
+         "{\"a\":1,\"b\":2}")
+        |}]
     ;;
   end
 
@@ -1331,7 +1349,8 @@ module Allow_extra_fields = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Allow_extra_fields.M2.t1_of_yojson: extra fields: b"
-         "[\"A\",{\"a\":[0],\"b\":\"1\"}]") |}]
+         "[\"A\",{\"a\":[0],\"b\":\"1\"}]")
+        |}]
     ;;
   end
 end
@@ -1352,7 +1371,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected variant constructor"
-         "[\"Z\"]") |}]
+         "[\"Z\"]")
+        |}]
     ;;
 
     let%expect_test _ =
@@ -1362,7 +1382,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected variant constructor"
-         "[\"A\"]") |}]
+         "[\"A\"]")
+        |}]
     ;;
 
     let%expect_test _ =
@@ -1375,15 +1396,13 @@ module Exceptions = struct
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "B"; `Float 1. ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect {|
-        (Of_yojson_error "int_of_yojson: integer needed" 1.0) |}]
+      [%expect {| (Of_yojson_error "int_of_yojson: integer needed" 1.0) |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "B"; `Intlit "1" ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect {|
-        (Of_yojson_error "int_of_yojson: integer needed" 1) |}]
+      [%expect {| (Of_yojson_error "int_of_yojson: integer needed" 1) |}]
     ;;
 
     let%expect_test _ =
@@ -1393,7 +1412,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: unexpected variant constructor"
-         "[\"C\",\"string\"]") |}]
+         "[\"C\",\"string\"]")
+        |}]
     ;;
 
     let%expect_test _ =
@@ -1403,14 +1423,14 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: extra fields: b"
-         "[\"C\",{\"b\":1}]") |}]
+         "[\"C\",{\"b\":1}]")
+        |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "D"; `Int 1; `Float 1. ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect {|
-        (Of_yojson_error "string_of_yojson: string needed" 1.0) |}]
+      [%expect {| (Of_yojson_error "string_of_yojson: string needed" 1.0) |}]
     ;;
 
     let%expect_test _ =
@@ -1420,7 +1440,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: sum tag \"D\" has incorrect number of arguments"
-         "[\"D\",[1,1.0]]") |}]
+         "[\"D\",[1,1.0]]")
+        |}]
     ;;
 
     let%expect_test _ =
@@ -1430,7 +1451,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: sum tag \"D\" has incorrect number of arguments"
-         "[\"D\",1,1.0,\"str\"]") |}]
+         "[\"D\",1,1.0,\"str\"]")
+        |}]
     ;;
   end
 
@@ -1449,28 +1471,26 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: no matching variant found"
-         "[\"Z\"]") |}]
+         "[\"Z\"]")
+        |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "B"; `Float 1. ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect {|
-        (Of_yojson_error "int_of_yojson: integer needed" 1.0) |}]
+      [%expect {| (Of_yojson_error "int_of_yojson: integer needed" 1.0) |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "B"; `Intlit "1" ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect {|
-        (Of_yojson_error "int_of_yojson: integer needed" 1) |}]
+      [%expect {| (Of_yojson_error "int_of_yojson: integer needed" 1) |}]
     ;;
 
     let%expect_test _ =
       let wrong_arg_type = `List [ `String "D"; `Int 1; `Float 1. ] in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_arg_type);
-      [%expect {|
-        (Of_yojson_error "string_of_yojson: string needed" 1.0) |}]
+      [%expect {| (Of_yojson_error "string_of_yojson: string needed" 1.0) |}]
     ;;
 
     let%expect_test _ =
@@ -1480,7 +1500,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: polymorphic variant tag \"D\" has incorrect number of arguments"
-         "[\"D\",[1,1.0]]") |}]
+         "[\"D\",[1,1.0]]")
+        |}]
     ;;
 
     let%expect_test _ =
@@ -1490,7 +1511,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Sum.t_of_yojson: polymorphic variant tag \"D\" has incorrect number of arguments"
-         "[\"D\",1,1.0,\"str\"]") |}]
+         "[\"D\",1,1.0,\"str\"]")
+        |}]
     ;;
   end
 
@@ -1521,7 +1543,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: extra fields: a"
-         "{\"a\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1}") |}]
+         "{\"a\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1}")
+        |}]
     ;;
 
     let%expect_test _ =
@@ -1536,8 +1559,7 @@ module Exceptions = struct
           ]
       in
       require_does_raise [%here] (fun () -> t_of_yojson wrong_field_type);
-      [%expect {|
-        (Of_yojson_error "int_of_yojson: integer needed" "\"A\"") |}]
+      [%expect {| (Of_yojson_error "int_of_yojson: integer needed" "\"A\"") |}]
     ;;
 
     let%expect_test _ =
@@ -1549,7 +1571,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: the following record elements were undefined: d"
-         "{\"A\":1,\"b\":\"str\",\"c\":1.0}") |}]
+         "{\"A\":1,\"b\":\"str\",\"c\":1.0}")
+        |}]
     ;;
 
     let%expect_test _ =
@@ -1569,7 +1592,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: duplicate fields: f"
-         "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"f\":1}") |}]
+         "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"f\":1}")
+        |}]
     ;;
 
     let%expect_test _ =
@@ -1589,7 +1613,8 @@ module Exceptions = struct
         {|
         (Of_yojson_error
          "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: extra fields: g"
-         "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"g\":1}") |}]
+         "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"g\":1}")
+        |}]
     ;;
   end
 end
