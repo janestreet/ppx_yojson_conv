@@ -14,7 +14,7 @@ module Yojson_of : sig
     :  loc:Location.t
     -> path:string
     -> rec_flag * type_declaration list
-    -> signature
+    -> signature_item list
 
   val str_type_decl
     :  loc:Location.t
@@ -40,7 +40,7 @@ module Of_yojson : sig
     -> loc:Location.t
     -> path:string
     -> rec_flag * type_declaration list
-    -> signature
+    -> signature_item list
 
   val str_type_decl
     :  loc:Location.t
@@ -55,5 +55,5 @@ module Sig_yojson : sig
     :  loc:Location.t
     -> path:string
     -> rec_flag * type_declaration list
-    -> signature
+    -> signature_item list
 end
