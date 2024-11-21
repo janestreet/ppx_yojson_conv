@@ -74,7 +74,7 @@ module Renaming : sig
   type t
 
   val identity : t
-  val add_universally_bound : t -> string loc -> t
+  val add_universally_bound : t -> string loc * Ppxlib_jane.jkind_annotation option -> t
 
   type binding_kind =
     | Universally_bound of string
@@ -92,7 +92,7 @@ end = struct
     | Universally_bound of string
     | Existentially_bound
 
-  let add_universally_bound (t : t) name : t =
+  let add_universally_bound (t : t) (name, _) : t =
     let name = name.txt in
     match t with
     | None -> None
@@ -137,8 +137,8 @@ end = struct
         inherit [(string, error) Result.t Map.M(String).t] Ast_traverse.fold as super
 
         method! core_type ty map =
-          match ty.ptyp_desc with
-          | Ptyp_var var ->
+          match Ppxlib_jane.Shim.Core_type_desc.of_parsetree ty.ptyp_desc with
+          | Ptyp_var (var, _) ->
             let error =
               { loc = ty.ptyp_loc
               ; txt =
@@ -150,8 +150,8 @@ end = struct
       end
     in
     let aux map tp_name tp_in_return_type =
-      match tp_in_return_type.ptyp_desc with
-      | Ptyp_var var ->
+      match Ppxlib_jane.Shim.Core_type_desc.of_parsetree tp_in_return_type.ptyp_desc with
+      | Ptyp_var (var, _) ->
         let data =
           if Map.mem map var
           then (
@@ -188,10 +188,11 @@ let replace_variables_by_underscores =
     object
       inherit Ast_traverse.map as super
 
-      method! core_type_desc =
-        function
-        | Ptyp_var _ -> Ptyp_any
-        | t -> super#core_type_desc t
+      method! core_type_desc t =
+        match Ppxlib_jane.Shim.Core_type_desc.of_parsetree t with
+        | Ptyp_var (_, jkind) ->
+          Ppxlib_jane.Shim.Core_type_desc.to_parsetree (Ptyp_any jkind)
+        | _ -> super#core_type_desc t
     end
   in
   map#core_type
@@ -211,10 +212,10 @@ let make_type_rigid ~type_name =
 
       method! core_type ty =
         let ptyp_desc =
-          match ty.ptyp_desc with
-          | Ptyp_var s ->
+          match Ppxlib_jane.Shim.Core_type_desc.of_parsetree ty.ptyp_desc with
+          | Ptyp_var (s, _) ->
             Ptyp_constr (Located.lident ~loc:ty.ptyp_loc (rigid_type_var ~type_name s), [])
-          | desc -> super#core_type_desc desc
+          | _ -> super#core_type_desc ty.ptyp_desc
         in
         { ty with ptyp_desc }
     end
@@ -235,8 +236,8 @@ let tvars_of_core_type : core_type -> string list =
       inherit [string list] Ast_traverse.fold as super
 
       method! core_type x acc =
-        match x.ptyp_desc with
-        | Ptyp_var x -> if List.mem acc x ~equal:String.equal then acc else x :: acc
+        match Ppxlib_jane.Shim.Core_type_desc.of_parsetree x.ptyp_desc with
+        | Ptyp_var (x, _) -> if List.mem acc x ~equal:String.equal then acc else x :: acc
         | _ -> super#core_type x acc
     end
   in
@@ -376,10 +377,13 @@ module Str_generate_yojson_of = struct
     match Ppxlib_jane.Shim.Core_type.of_parsetree typ with
     | _ when Option.is_some (Attribute.get Attrs.opaque typ) ->
       Fun [%expr Ppx_yojson_conv_lib.Yojson_conv.yojson_of_opaque]
-    | { ptyp_desc = Ptyp_any; _ } -> Fun [%expr fun _ -> `String "_"]
-    | { ptyp_desc = Ptyp_tuple tp; _ } ->
-      Match [ yojson_of_tuple ~typevar_handling (loc, tp) ]
-    | { ptyp_desc = Ptyp_var parm; _ } ->
+    | { ptyp_desc = Ptyp_any _; _ } -> Fun [%expr fun _ -> `String "_"]
+    | { ptyp_desc = Ptyp_tuple labeled_tps; _ } ->
+      (match Ppxlib_jane.as_unlabeled_tuple labeled_tps with
+       | Some tps -> Match [ yojson_of_tuple ~typevar_handling (loc, tps) ]
+       | None ->
+         Location.raise_errorf ~loc "Labeled tuples unsupported in [%%yojson_of: ].")
+    | { ptyp_desc = Ptyp_var (parm, _); _ } ->
       (match typevar_handling with
        | `disallowed_in_type_expr ->
          Location.raise_errorf
@@ -440,8 +444,11 @@ module Str_generate_yojson_of = struct
       | Rtag (cnstr, false, [ tp ]) ->
         let label = Label_with_name.create ~label:cnstr.txt ~name_override in
         let args =
-          match tp.ptyp_desc with
-          | Ptyp_tuple tps -> tps
+          match Ppxlib_jane.Shim.Core_type_desc.of_parsetree tp.ptyp_desc with
+          | Ptyp_tuple labeled_tps ->
+            (match Ppxlib_jane.as_unlabeled_tuple labeled_tps with
+             | Some tps -> tps
+             | None -> [ tp ])
           | _ -> [ tp ]
         in
         let cnstr_expr = [%expr `String [%e estring ~loc (Label_with_name.name label)]] in
@@ -483,7 +490,7 @@ module Str_generate_yojson_of = struct
       Location.raise_errorf ~loc "polymorphic type in a type expression"
     | `ok renaming ->
       let bindings =
-        let mk_binding parm =
+        let mk_binding (parm, _) =
           value_binding
             ~loc
             ~pat:(pvar ~loc ("_of_" ^ parm.txt))
@@ -565,9 +572,9 @@ module Str_generate_yojson_of = struct
         object
           inherit Ast_traverse.iter as super
 
-          method! core_type_desc =
-            function
-            | Ptyp_var v ->
+          method! core_type_desc t =
+            match Ppxlib_jane.Shim.Core_type_desc.of_parsetree t with
+            | Ptyp_var (v, _) ->
               Location.raise_errorf
                 ~loc
                 "[@yojson_drop_default.%s] was used, but the type of the field contains \
@@ -579,7 +586,7 @@ module Str_generate_yojson_of = struct
                  | `compare -> "compare"
                  | `equal -> "equal")
                 v
-            | t -> super#core_type_desc t
+            | _ -> super#core_type_desc t
         end
       in
       iter#core_type
@@ -1026,8 +1033,12 @@ module Str_generate_of_yojson = struct
       Fun [%expr Ppx_yojson_conv_lib.Yojson_conv.opaque_of_yojson]
     | _ ->
       (match Ppxlib_jane.Shim.Core_type_desc.of_parsetree typ.ptyp_desc with
-       | Ptyp_tuple tp -> Match (tuple_of_yojson ~typevar_handling (loc, tp))
-       | Ptyp_var parm ->
+       | Ptyp_tuple labeled_tps ->
+         (match Ppxlib_jane.as_unlabeled_tuple labeled_tps with
+          | Some tps -> Match (tuple_of_yojson ~typevar_handling (loc, tps))
+          | None ->
+            Location.raise_errorf ~loc "Labeled tuples unsupported in [%%of_yojson: ].")
+       | Ptyp_var (parm, _) ->
          (match typevar_handling with
           | `ok -> Fun (evar ~loc ("_of_" ^ parm))
           | `disallowed_in_type_expr ->
@@ -1046,7 +1057,7 @@ module Str_generate_of_yojson = struct
        | Ptyp_variant (row_fields, _, _) ->
          variant_of_yojson ~typevar_handling ?full_type (loc, row_fields)
        | Ptyp_poly (parms, poly_tp) -> poly_of_yojson ~typevar_handling parms poly_tp
-       | Ptyp_any ->
+       | Ptyp_any _ ->
          (* This case is matched in the outer match *)
          failwith "impossible state"
        | typ ->
@@ -1165,8 +1176,11 @@ module Str_generate_of_yojson = struct
       | `S (loc, label, tp, _row) ->
         has_structs_ref := true;
         let args =
-          match tp.ptyp_desc with
-          | Ptyp_tuple tps -> tps
+          match Ppxlib_jane.Shim.Core_type_desc.of_parsetree tp.ptyp_desc with
+          | Ptyp_tuple labeled_tps ->
+            (match Ppxlib_jane.as_unlabeled_tuple labeled_tps with
+             | Some tps -> tps
+             | None -> [ tp ])
           | _ -> [ tp ]
         in
         let expr =
@@ -1277,7 +1291,7 @@ module Str_generate_of_yojson = struct
   and poly_of_yojson ~typevar_handling parms tp =
     let loc = tp.ptyp_loc in
     let bindings =
-      let mk_binding parm =
+      let mk_binding (parm, _) =
         value_binding
           ~loc
           ~pat:(pvar ~loc ("_of_" ^ parm.txt))
