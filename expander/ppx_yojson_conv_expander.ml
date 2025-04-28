@@ -315,7 +315,7 @@ module Sig_generate_yojson_of = struct
         ~loc
         (value_description
            ~loc
-           ~name:(Located.map (( ^ ) "yojson_of_") td.ptype_name)
+           ~name:(Located.map (fun x -> "yojson_of_" ^ x) td.ptype_name)
            ~type_:(mk_type td)
            ~prim:[]))
   ;;
@@ -649,20 +649,15 @@ module Str_generate_yojson_of = struct
           match how with
           | `no_arg ->
             [%expr
-              Ppx_yojson_conv_lib.poly_equal [@ocaml.ppwarning
-                                               "[@yojson_drop_default] is deprecated: \
-                                                please use one of:\n\
-                                                - [@yojson_drop_default f] and give an \
-                                                explicit equality function ([f = \
-                                                Poly.(=)] corresponds to the old \
-                                                behavior)\n\
-                                                - [@yojson_drop_default.compare] if the \
-                                                type supports [%compare]\n\
-                                                - [@yojson_drop_default.equal] if the \
-                                                type supports [%equal]\n\
-                                                - [@yojson_drop_default.yojson] if you \
-                                                want to compare the yojson \
-                                                representations\n"]]
+              Ppx_yojson_conv_lib.poly_equal
+              [@ocaml.ppwarning
+                "[@yojson_drop_default] is deprecated: please use one of:\n\
+                 - [@yojson_drop_default f] and give an explicit equality function ([f = \
+                 Poly.(=)] corresponds to the old behavior)\n\
+                 - [@yojson_drop_default.compare] if the type supports [%compare]\n\
+                 - [@yojson_drop_default.equal] if the type supports [%equal]\n\
+                 - [@yojson_drop_default.yojson] if you want to compare the yojson \
+                 representations\n"]]
           | `func f -> f
           | `compare ->
             disallow_type_variables_and_recursive_occurrences
@@ -845,7 +840,7 @@ module Str_generate_yojson_of = struct
     let { ptype_name = { txt = type_name; loc = _ }; ptype_loc = loc; _ } = td in
     let body =
       let body =
-        match td.ptype_kind with
+        match Ppxlib_jane.Shim.Type_kind.of_parsetree td.ptype_kind with
         | Ptype_variant cds ->
           yojson_of_sum ~types_being_defined (List.map tps ~f:(fun x -> x.txt)) cds
         | Ptype_record lds ->
@@ -859,6 +854,8 @@ module Str_generate_yojson_of = struct
               ~wrap_expr:(fun expr -> [%expr `Assoc [%e expr]])
           in
           Match [ patt --> expr ]
+        | Ptype_record_unboxed_product _ ->
+          Location.raise_errorf ~loc "ppx_yojson_conv: unboxed record types not supported"
         | Ptype_open ->
           Location.raise_errorf ~loc "ppx_yojson_conv: open types not supported"
         | Ptype_abstract ->
@@ -939,8 +936,12 @@ module Str_generate_yojson_fields = struct
     let tps = List.map td.ptype_params ~f:get_type_param_name in
     let { ptype_name = { txt = type_name; loc = _ }; ptype_loc = loc; _ } = td in
     let body =
-      match td.ptype_kind with
+      match Ppxlib_jane.Shim.Type_kind.of_parsetree td.ptype_kind with
       | Ptype_record lds -> yojson_fields_of_label_declaration_list loc lds
+      | Ptype_record_unboxed_product _ ->
+        Location.raise_errorf
+          ~loc
+          "ppx_yojson_conv: yojson_fields does not yet support unboxed records"
       | Ptype_variant _ | Ptype_open | Ptype_abstract ->
         Location.raise_errorf ~loc "ppx_yojson_conv: yojson_fields only works on records"
     in
@@ -1658,7 +1659,7 @@ module Str_generate_of_yojson = struct
     in
     let body =
       let body =
-        match td.ptype_kind with
+        match Ppxlib_jane.Shim.Type_kind.of_parsetree td.ptype_kind with
         | Ptype_variant alts ->
           Attrs.fail_if_allow_extra_field_td ~loc td;
           sum_of_yojson ~typevar_handling (td.ptype_loc, alts)
@@ -1668,6 +1669,8 @@ module Str_generate_of_yojson = struct
             ~allow_extra_fields:
               (Option.is_some (Attribute.get Attrs.allow_extra_fields_td td))
             (loc, lbls)
+        | Ptype_record_unboxed_product _ ->
+          Location.raise_errorf ~loc "ppx_yojson_conv: unboxed record types not supported"
         | Ptype_open ->
           Location.raise_errorf ~loc "ppx_yojson_conv: open types not supported"
         | Ptype_abstract ->
