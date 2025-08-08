@@ -19,11 +19,11 @@ module Fields = struct
     ; y : int [@key "some"]
     ; z : int [@key "some"]
     }
-  [@@deriving yojson_fields]
+  [@@deriving yojson_fields ~capitalize:"PascalCase"]
 
   let%expect_test _ =
     print_s [%sexp (yojson_fields_of_ty : string list)];
-    [%expect {| (x some some) |}]
+    [%expect {| (X some some) |}]
   ;;
 end
 
@@ -401,6 +401,46 @@ module Name = struct
   ;;
 end
 
+module Capitalize_variants = struct
+  type nominal =
+    | Con_1
+    | Con_2 of int
+    | Con_3 of (int * string)
+    | Con_4 of int * string
+    | Con_5 of { a : int }
+    | Con_6 of { b : int } [@name "something-custom"]
+  [@@deriving yojson ~capitalize:"kebab-case", equal]
+
+  let ( = ) = equal_nominal
+
+  let%expect_test _ =
+    List.iter
+      ~f:(fun value ->
+        let yojson = yojson_of_nominal value in
+        print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
+        require (nominal_of_yojson yojson = value))
+      [ Con_1; Con_2 2; Con_3 (1, "a"); Con_4 (1, "a"); Con_5 { a = 1 }; Con_6 { b = 1 } ];
+    [%expect
+      {|
+      (List ((String con-1)))
+      (List (
+        (String con-2)
+        (Int    2)))
+      (List (
+        (String con-3)
+        (List (
+          (Int    1)
+          (String a)))))
+      (List (
+        (String con-4)
+        (Int    1)
+        (String a)))
+      (List ((String con-5) (Assoc ((a (Int 1))))))
+      (List ((String something-custom) (Assoc ((b (Int 1))))))
+      |}]
+  ;;
+end
+
 module Records = struct
   type t =
     { a : int
@@ -454,6 +494,29 @@ module Keys = struct
         (key_c (Int 3))
         (key_d (Int 4))
         (""    (Int 5))))
+      |}]
+  ;;
+end
+
+module Capitalize_arg = struct
+  type t =
+    { name_a : int
+    ; name_b : int option [@key "otherName"]
+    }
+  [@@deriving yojson ~capitalize:"camelCase", equal]
+
+  let ( = ) = equal
+
+  let%expect_test _ =
+    let t = { name_a = 1; name_b = Some 2 } in
+    let yojson = yojson_of_t t in
+    print_s (Yojson.Safe.Alternate_sexp.sexp_of_t yojson);
+    require (t_of_yojson yojson = t);
+    [%expect
+      {|
+      (Assoc (
+        (nameA     (Int 1))
+        (otherName (Int 2))))
       |}]
   ;;
 end

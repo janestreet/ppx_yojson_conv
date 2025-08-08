@@ -161,3 +161,38 @@ type t = string list [@@deriving yojson_fields]
 Line _, characters _-_:
 Error: ppx_yojson_conv: yojson_fields only works on records
 |}]
+
+type t = int [@@deriving yojson ~capitalize:"invalid"]
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_yojson_conv: invalid capitalize argument
+       (can be: PascalCase, camelCase, snake_case, Capitalized_snake_case,
+        Pascal_Snake_Case, SCREAMING_SNAKE_CASE, aLtErNaTiNg_sNaKe_cAsE,
+        kebab-case, Capitalized-kebab-case, Pascal-Kebab-Case,
+        SCREAMING-KEBAB-CASE, aLtErNaTiNg-kEbAb-cAsE, Sentence case,
+        Title Case, lower sentence case, UPPER SENTENCE CASE,
+        aLtErNaTiNg sEnTeNcE CaSe)
+|}]
+
+module type S = sig
+  type t [@@deriving yojson ~capitalize:"snake_case"]
+end
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: Ppxlib.Deriving: generator 'yojson' doesn't accept argument
+       'capitalize'
+|}]
+
+type t = { multi_word : string } [@@deriving yojson ~capitalize:"lowercase"]
+
+[%%expect
+  {|
+Line _, characters _-_:
+Error: ppx_yojson_conv: capitalize argument must specify multiple word behavior
+       (potential options: camelCase, snake_case, kebab-case,
+        lower sentence case)
+|}]

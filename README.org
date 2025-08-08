@@ -147,6 +147,18 @@ type t = {
 [@@deriving yojson, yojson_fields]
 #+end_src
 
+You can also pass the =~capitalize:"..."= deriving argument to change the case
+convention of the field names. =[@key]= takes precedence if present.
+
+#+begin_src ocaml
+type t = {
+  field_a : float;                  (* becomes field-a *)
+  field_b : float;                  (* becomes field-b *)
+  field_b : float [@key "_custom"]; (* becomes _custom *)
+}
+[@@deriving yojson ~capitalize:"kebab-case", yojson_fields ~capitalize:"kebab-case"]
+#+end_src
+
 The =yojson_fields= attribute generates the list of JSON keys from a
 record type, for example:
 #+begin_src ocaml
@@ -243,6 +255,17 @@ type t =
 | Typ   [@name "type"]
 | Class [@name "class"]
 [@@deriving yojson]
+#+end_src
+
+You can also use the =~capitalize:"..."= arg. =[@name]= takes precedence over
+=~capitalize=. For example:
+
+#+begin_src ocaml
+type t =
+| A_thing            (* aThing *)
+| Another_long_thing (* anotherLongThing *)
+| Custom [@name "_"] (* _ *)
+[@@deriving yojson ~capitalize:"camelCase"]
 #+end_src
 
 *** Polymorphic variants

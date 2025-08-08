@@ -12,6 +12,7 @@ build: [
 depends: [
   "ocaml" {>= "5.1.0"}
   "base"
+  "capitalization"
   "ppx_js_style"
   "ppx_yojson_conv_lib"
   "ppxlib_jane"
