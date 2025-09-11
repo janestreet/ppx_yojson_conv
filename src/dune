@@ -3,5 +3,5 @@
  (public_name ppx_yojson_conv)
  (kind ppx_deriver)
  (libraries ppxlib ppx_yojson_conv_expander)
- (preprocess
+ (lint
   (pps ppx_js_style)))
