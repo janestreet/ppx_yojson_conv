@@ -20,6 +20,7 @@ module Yojson_of : sig
     :  loc:Location.t
     -> path:string
     -> rec_flag * type_declaration list
+    -> Capitalization_ppx_configuration.t option
     -> structure
 end
 
@@ -28,6 +29,7 @@ module Yojson_fields : sig
     :  loc:Location.t
     -> path:string
     -> rec_flag * type_declaration list
+    -> Capitalization_ppx_configuration.t option
     -> structure
 end
 
@@ -47,6 +49,7 @@ module Of_yojson : sig
     -> poly:bool
     -> path:string
     -> rec_flag * type_declaration list
+    -> Capitalization_ppx_configuration.t option
     -> structure
 end
 

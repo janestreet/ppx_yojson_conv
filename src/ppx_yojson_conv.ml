@@ -3,13 +3,18 @@
 open Ppxlib
 module Attrs = Ppx_yojson_conv_expander.Attrs
 
+let capitalization_arg =
+  Capitalization_ppx_configuration.argument ~ppx_name:"ppx_yojson_conv"
+;;
+
 module Yojson_of = struct
   module E = Ppx_yojson_conv_expander.Yojson_of
 
   let name = "yojson_of"
 
   let str_type_decl =
-    Deriving.Generator.make_noarg
+    Deriving.Generator.make
+      Deriving.Args.(empty +> capitalization_arg)
       E.str_type_decl
       ~attributes:
         [ Attribute.T Attrs.default
@@ -40,7 +45,14 @@ module Yojson_fields = struct
   module E = Ppx_yojson_conv_expander.Yojson_fields
 
   let name = "yojson_fields"
-  let str_type_decl = Deriving.Generator.make_noarg E.str_type_decl ~attributes:[]
+
+  let str_type_decl =
+    Deriving.Generator.make
+      Deriving.Args.(empty +> capitalization_arg)
+      E.str_type_decl
+      ~attributes:[]
+  ;;
+
   let deriver = Deriving.add name ~str_type_decl
 end
 
@@ -50,7 +62,8 @@ module Of_yojson = struct
   let name = "of_yojson"
 
   let str_type_decl =
-    Deriving.Generator.make_noarg
+    Deriving.Generator.make
+      Deriving.Args.(empty +> capitalization_arg)
       (E.str_type_decl ~poly:false)
       ~attributes:[ Attribute.T Attrs.default ]
   ;;
@@ -77,7 +90,8 @@ module Of_yojson_poly = struct
   module E = Ppx_yojson_conv_expander.Of_yojson
 
   let str_type_decl =
-    Deriving.Generator.make_noarg
+    Deriving.Generator.make
+      Deriving.Args.(empty +> capitalization_arg)
       (E.str_type_decl ~poly:true)
       ~attributes:[ Attribute.T Attrs.default ]
   ;;

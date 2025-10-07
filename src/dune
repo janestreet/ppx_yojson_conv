@@ -2,6 +2,6 @@
  (name ppx_yojson_conv)
  (public_name ppx_yojson_conv)
  (kind ppx_deriver)
- (libraries ppxlib ppx_yojson_conv_expander)
+ (libraries ppxlib ppx_yojson_conv_expander capitalization.ppx_configuration)
  (preprocess
   (pps ppx_js_style)))

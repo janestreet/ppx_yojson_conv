@@ -20,6 +20,16 @@ let pexp_match ~loc expr cases =
   | _ -> pexp_match ~loc expr cases
 ;;
 
+let get_label_name (ld : label_declaration) ~capitalization =
+  match Attribute.get Attrs.yojson_key ld with
+  | Some custom -> custom
+  | None ->
+    let name = ld.pld_name.txt in
+    (match capitalization with
+     | None -> name
+     | Some c -> Capitalization_ppx_configuration.apply_to_snake_case_exn c name)
+;;
+
 module Fun_or_match = struct
   type t =
     | Fun of expression
@@ -370,6 +380,7 @@ module Str_generate_yojson_of = struct
   (* Conversion of types *)
   let rec yojson_of_type
     ~(typevar_handling : [ `ok of Renaming.t | `disallowed_in_type_expr ])
+    ~capitalization
     typ
     : Fun_or_match.t
     =
@@ -380,7 +391,8 @@ module Str_generate_yojson_of = struct
     | { ptyp_desc = Ptyp_any _; _ } -> Fun [%expr fun _ -> `String "_"]
     | { ptyp_desc = Ptyp_tuple labeled_tps; _ } ->
       (match Ppxlib_jane.as_unlabeled_tuple labeled_tps with
-       | Some tps -> Match [ yojson_of_tuple ~typevar_handling (loc, tps) ]
+       | Some tps ->
+         Match [ yojson_of_tuple ~typevar_handling ~capitalization (loc, tps) ]
        | None ->
          Location.raise_errorf ~loc "Labeled tuples unsupported in [%%yojson_of: ].")
     | { ptyp_desc = Ptyp_var (parm, _); _ } ->
@@ -393,7 +405,8 @@ module Str_generate_yojson_of = struct
        | `ok renaming ->
          (match Renaming.binding_kind renaming parm with
           | Universally_bound parm -> Fun (evar ~loc ("_of_" ^ parm))
-          | Existentially_bound -> yojson_of_type ~typevar_handling [%type: _]))
+          | Existentially_bound ->
+            yojson_of_type ~typevar_handling ~capitalization [%type: _]))
     | { ptyp_desc = Ptyp_constr (id, args); _ } ->
       (match typ with
        | [%type: [%t? _] yojson_opaque] ->
@@ -404,16 +417,18 @@ module Str_generate_yojson_of = struct
               ~loc
               id
               (List.map args ~f:(fun tp ->
-                 Fun_or_match.expr ~loc (yojson_of_type ~typevar_handling tp)))))
+                 Fun_or_match.expr
+                   ~loc
+                   (yojson_of_type ~typevar_handling ~capitalization tp)))))
     | { ptyp_desc = Ptyp_arrow (_, _, _, _, _); _ } ->
       Fun
         [%expr
           fun _f ->
             Ppx_yojson_conv_lib.Yojson_conv.yojson_of_fun Ppx_yojson_conv_lib.ignore]
     | { ptyp_desc = Ptyp_variant (row_fields, _, _); _ } ->
-      yojson_of_variant ~typevar_handling (loc, row_fields)
+      yojson_of_variant ~typevar_handling ~capitalization (loc, row_fields)
     | { ptyp_desc = Ptyp_poly (parms, poly_tp); _ } ->
-      yojson_of_poly ~typevar_handling parms poly_tp
+      yojson_of_poly ~typevar_handling ~capitalization parms poly_tp
     | { ptyp_desc; _ } ->
       Location.raise_errorf
         ~loc
@@ -421,8 +436,10 @@ module Str_generate_yojson_of = struct
         (Ppxlib_jane.Language_feature_name.of_core_type_desc ptyp_desc)
 
   (* Conversion of tuples *)
-  and yojson_of_tuple ~typevar_handling (loc, tps) =
-    let fps = List.map ~f:(fun tp -> yojson_of_type ~typevar_handling tp) tps in
+  and yojson_of_tuple ~typevar_handling ~capitalization (loc, tps) =
+    let fps =
+      List.map ~f:(fun tp -> yojson_of_type ~typevar_handling ~capitalization tp) tps
+    in
     let bindings, pvars, evars = Fun_or_match.map_tmp_vars ~loc fps in
     let in_expr = [%expr `List [%e elist ~loc evars]] in
     let expr = pexp_let ~loc Nonrecursive bindings in_expr in
@@ -431,6 +448,7 @@ module Str_generate_yojson_of = struct
   (* Conversion of variant types *)
   and yojson_of_variant
     ~typevar_handling
+    ~capitalization
     ((loc, row_fields) : Location.t * row_field list)
     : Fun_or_match.t
     =
@@ -438,11 +456,15 @@ module Str_generate_yojson_of = struct
       let name_override = Attribute.get Attrs.yojson_polymorphic_variant_name row in
       match row.prf_desc with
       | Rtag (cnstr, true, []) ->
-        let label = Label_with_name.create ~label:cnstr.txt ~name_override in
+        let label =
+          Label_with_name.create ~label:cnstr.txt ~name_override ~capitalization
+        in
         ppat_variant ~loc (Label_with_name.label label) None
         --> [%expr `List [ `String [%e estring ~loc (Label_with_name.name label)] ]]
       | Rtag (cnstr, false, [ tp ]) ->
-        let label = Label_with_name.create ~label:cnstr.txt ~name_override in
+        let label =
+          Label_with_name.create ~label:cnstr.txt ~name_override ~capitalization
+        in
         let args =
           match Ppxlib_jane.Shim.Core_type_desc.of_parsetree tp.ptyp_desc with
           | Ptyp_tuple labeled_tps ->
@@ -452,7 +474,9 @@ module Str_generate_yojson_of = struct
           | _ -> [ tp ]
         in
         let cnstr_expr = [%expr `String [%e estring ~loc (Label_with_name.name label)]] in
-        let yojson_of_args = List.map ~f:(yojson_of_type ~typevar_handling) args in
+        let yojson_of_args =
+          List.map ~f:(yojson_of_type ~typevar_handling ~capitalization) args
+        in
         let bindings, patts, vars = Fun_or_match.map_tmp_vars ~loc yojson_of_args in
         let patt =
           match patts with
@@ -471,7 +495,9 @@ module Str_generate_yojson_of = struct
       | Rtag (_, true, [ _ ]) | Rtag (_, _, _ :: _ :: _) ->
         Location.raise_errorf ~loc "unsupported: yojson_of_variant/Rtag/&"
       | Rinherit ({ ptyp_desc = Ptyp_constr (id, _ :: _); _ } as typ) ->
-        let call = Fun_or_match.expr ~loc (yojson_of_type ~typevar_handling typ) in
+        let call =
+          Fun_or_match.expr ~loc (yojson_of_type ~typevar_handling ~capitalization typ)
+        in
         ppat_alias ~loc (ppat_type ~loc id) (Loc.make "v" ~loc) --> [%expr [%e call] v]
       | Rinherit _ ->
         Location.raise_errorf ~loc "unsupported: yojson_of_variant/Rinherit/non-id"
@@ -481,7 +507,7 @@ module Str_generate_yojson_of = struct
     Match (List.map ~f:item row_fields)
 
   (* Polymorphic record fields *)
-  and yojson_of_poly ~typevar_handling parms tp =
+  and yojson_of_poly ~typevar_handling ~capitalization parms tp =
     let loc = tp.ptyp_loc in
     match typevar_handling with
     | `disallowed_in_type_expr ->
@@ -501,7 +527,7 @@ module Str_generate_yojson_of = struct
       let renaming =
         List.fold_left parms ~init:renaming ~f:Renaming.add_universally_bound
       in
-      (match yojson_of_type ~typevar_handling:(`ok renaming) tp with
+      (match yojson_of_type ~typevar_handling:(`ok renaming) ~capitalization tp with
        | Fun fun_expr -> Fun (pexp_let ~loc Nonrecursive bindings fun_expr)
        | Match matchings ->
          Match
@@ -525,11 +551,21 @@ module Str_generate_yojson_of = struct
     | Inspect_value of (location -> expression -> expression)
     | Inspect_yojson of (cnv_expr:expression -> location -> expression -> expression)
 
-  let yojson_of_record_field ~renaming patt expr name tp ?yojson_of is_empty_expr key =
+  let yojson_of_record_field
+    ~renaming
+    ~capitalization
+    patt
+    expr
+    name
+    tp
+    ?yojson_of
+    is_empty_expr
+    key
+    =
     let loc = { tp.ptyp_loc with loc_ghost = true } in
     let patt = mk_rec_patt loc patt name in
     let cnv_expr =
-      match yojson_of_type ~typevar_handling:(`ok renaming) tp with
+      match yojson_of_type ~typevar_handling:(`ok renaming) ~capitalization tp with
       | Fun exp -> exp
       | Match matchings -> [%expr fun el -> [%e pexp_match ~loc [%expr el] matchings]]
     in
@@ -629,6 +665,7 @@ module Str_generate_yojson_of = struct
     ~types_being_defined
     how
     ~renaming
+    ~capitalization
     patt
     expr
     name
@@ -676,15 +713,29 @@ module Str_generate_yojson_of = struct
         in
         Inspect_value (fun loc expr -> [%expr [%e equality_f loc] [%e default] [%e expr]])
     in
-    yojson_of_record_field ~renaming patt expr name tp ?yojson_of is_empty key
+    yojson_of_record_field
+      ~renaming
+      ~capitalization
+      patt
+      expr
+      name
+      tp
+      ?yojson_of
+      is_empty
+      key
   ;;
 
-  let yojson_of_label_declaration_list ~types_being_defined ~renaming loc flds ~wrap_expr =
+  let yojson_of_label_declaration_list
+    ~types_being_defined
+    ~renaming
+    ~capitalization
+    loc
+    flds
+    ~wrap_expr
+    =
     let coll ((patt : (Longident.t loc * pattern) list), expr) ld =
       let name = ld.pld_name.txt in
-      let key =
-        Option.value ~default:ld.pld_name.txt (Attribute.get Attrs.yojson_key ld)
-      in
+      let key = get_label_name ld ~capitalization in
       let loc = { ld.pld_name.loc with loc_ghost = true } in
       match Attrs.Record_field_handler.Yojson_of.create ~loc ld with
       | `yojson_option tp ->
@@ -694,7 +745,7 @@ module Str_generate_yojson_of = struct
           Fun_or_match.unroll
             ~loc
             vname
-            (yojson_of_type ~typevar_handling:(`ok renaming) tp)
+            (yojson_of_type ~typevar_handling:(`ok renaming) ~capitalization tp)
         in
         let expr =
           [%expr
@@ -718,6 +769,7 @@ module Str_generate_yojson_of = struct
              ~types_being_defined
              how
              ~renaming
+             ~capitalization
              patt
              expr
              name
@@ -728,6 +780,7 @@ module Str_generate_yojson_of = struct
         let tp = ld.pld_type in
         yojson_of_record_field
           ~renaming
+          ~capitalization
           patt
           expr
           name
@@ -742,7 +795,7 @@ module Str_generate_yojson_of = struct
           Fun_or_match.unroll
             ~loc
             vname
-            (yojson_of_type ~typevar_handling:(`ok renaming) tp)
+            (yojson_of_type ~typevar_handling:(`ok renaming) ~capitalization tp)
         in
         let bnds =
           match test with
@@ -771,7 +824,15 @@ module Str_generate_yojson_of = struct
 
   (* Conversion of sum types *)
 
-  let branch_sum ~types_being_defined renaming ~loc constr_lid constr_str args =
+  let branch_sum
+    ~types_being_defined
+    renaming
+    ~capitalization
+    ~loc
+    constr_lid
+    constr_str
+    args
+    =
     match args with
     | Pcstr_record lds ->
       let cnstr_expr = [%expr `String [%e constr_str]] in
@@ -779,6 +840,7 @@ module Str_generate_yojson_of = struct
         yojson_of_label_declaration_list
           ~types_being_defined
           ~renaming
+          ~capitalization
           loc
           lds
           ~wrap_expr:(fun expr -> [%expr `List [ [%e cnstr_expr]; `Assoc [%e expr] ]])
@@ -793,7 +855,7 @@ module Str_generate_yojson_of = struct
            List.map
              ~f:(fun arg ->
                Ppxlib_jane.Shim.Pcstr_tuple_arg.to_core_type arg
-               |> yojson_of_type ~typevar_handling:(`ok renaming))
+               |> yojson_of_type ~typevar_handling:(`ok renaming) ~capitalization)
              args
          in
          let cnstr_expr = [%expr `String [%e constr_str]] in
@@ -811,18 +873,19 @@ module Str_generate_yojson_of = struct
                [%expr `List [%e elist ~loc (cnstr_expr :: vars)]])
   ;;
 
-  let yojson_of_sum ~types_being_defined tps cds =
+  let yojson_of_sum ~types_being_defined ~capitalization tps cds =
     Fun_or_match.Match
       (List.map cds ~f:(fun cd ->
          let renaming = Renaming.of_gadt tps cd in
          let constr_lid = Located.map lident cd.pcd_name in
          let constr_name =
-           let label = Label_with_name.of_constructor_declaration cd in
+           let label = Label_with_name.of_constructor_declaration cd ~capitalization in
            Label_with_name.name label |> estring ~loc:cd.pcd_name.loc
          in
          branch_sum
            ~types_being_defined
            renaming
+           ~capitalization
            ~loc:cd.pcd_loc
            constr_lid
            constr_name
@@ -834,7 +897,7 @@ module Str_generate_yojson_of = struct
 
   (* Generate code from type definitions *)
 
-  let yojson_of_td ~types_being_defined td =
+  let yojson_of_td ~types_being_defined ~capitalization td =
     let td = name_type_params_in_td td in
     let tps = List.map td.ptype_params ~f:get_type_param_name in
     let { ptype_name = { txt = type_name; loc = _ }; ptype_loc = loc; _ } = td in
@@ -842,12 +905,17 @@ module Str_generate_yojson_of = struct
       let body =
         match Ppxlib_jane.Shim.Type_kind.of_parsetree td.ptype_kind with
         | Ptype_variant cds ->
-          yojson_of_sum ~types_being_defined (List.map tps ~f:(fun x -> x.txt)) cds
+          yojson_of_sum
+            ~types_being_defined
+            ~capitalization
+            (List.map tps ~f:(fun x -> x.txt))
+            cds
         | Ptype_record lds ->
           let renaming = Renaming.identity in
           let patt, expr =
             yojson_of_label_declaration_list
               ~renaming
+              ~capitalization
               loc
               lds
               ~types_being_defined
@@ -861,7 +929,8 @@ module Str_generate_yojson_of = struct
         | Ptype_abstract ->
           (match td.ptype_manifest with
            | None -> yojson_of_nil loc
-           | Some ty -> yojson_of_type ~typevar_handling:(`ok Renaming.identity) ty)
+           | Some ty ->
+             yojson_of_type ~typevar_handling:(`ok Renaming.identity) ~capitalization ty)
       in
       let is_private_alias =
         match td.ptype_kind, td.ptype_manifest, td.ptype_private with
@@ -905,7 +974,7 @@ module Str_generate_yojson_of = struct
     [ constrained_function_binding loc td typ ~tps ~func_name body ]
   ;;
 
-  let yojson_of_tds ~loc ~path:_ (rec_flag, tds) =
+  let yojson_of_tds ~loc ~path:_ (rec_flag, tds) capitalization =
     let rec_flag = really_recursive rec_flag tds in
     let types_being_defined =
       match rec_flag with
@@ -914,30 +983,31 @@ module Str_generate_yojson_of = struct
         `Recursive
           (Set.of_list (module String) (List.map tds ~f:(fun td -> td.ptype_name.txt)))
     in
-    let bindings = List.concat_map tds ~f:(yojson_of_td ~types_being_defined) in
+    let bindings =
+      List.concat_map tds ~f:(yojson_of_td ~types_being_defined ~capitalization)
+    in
     pstr_value_list ~loc rec_flag bindings
   ;;
 end
 
 module Str_generate_yojson_fields = struct
-  let yojson_fields_of_label_declaration_list loc flds =
+  let yojson_fields_of_label_declaration_list ~capitalization loc flds =
     let coll ld =
-      let key =
-        Option.value ~default:ld.pld_name.txt (Attribute.get Attrs.yojson_key ld)
-      in
+      let key = get_label_name ld ~capitalization in
       let loc = ld.pld_name.loc in
       estring ~loc key
     in
     elist ~loc (List.map ~f:coll flds)
   ;;
 
-  let yojson_fields_of_td td =
+  let yojson_fields_of_td ~capitalization td =
     let td = name_type_params_in_td td in
     let tps = List.map td.ptype_params ~f:get_type_param_name in
     let { ptype_name = { txt = type_name; loc = _ }; ptype_loc = loc; _ } = td in
     let body =
       match Ppxlib_jane.Shim.Type_kind.of_parsetree td.ptype_kind with
-      | Ptype_record lds -> yojson_fields_of_label_declaration_list loc lds
+      | Ptype_record lds ->
+        yojson_fields_of_label_declaration_list ~capitalization loc lds
       | Ptype_record_unboxed_product _ ->
         Location.raise_errorf
           ~loc
@@ -954,8 +1024,11 @@ module Str_generate_yojson_fields = struct
     constrained_function_binding loc td typ ~tps ~func_name body
   ;;
 
-  let yojson_fields_of_tds ~loc ~path:_ (_, tds) =
-    pstr_value_list ~loc Nonrecursive (List.map tds ~f:yojson_fields_of_td)
+  let yojson_fields_of_tds ~loc ~path:_ (_, tds) capitalization =
+    pstr_value_list
+      ~loc
+      Nonrecursive
+      (List.map tds ~f:(yojson_fields_of_td ~capitalization))
   ;;
 end
 
@@ -997,15 +1070,19 @@ module Str_generate_of_yojson = struct
   (* Split the row fields of a variant type into lists of atomic variants,
      structured variants, atomic variants + included variant types,
      and structured variants + included variant types. *)
-  let split_row_field ~loc (atoms, structs, ainhs, sinhs) row_field =
+  let split_row_field ~loc ~capitalization (atoms, structs, ainhs, sinhs) row_field =
     let name_override = Attribute.get Attrs.yojson_polymorphic_variant_name row_field in
     match row_field.prf_desc with
     | Rtag (cnstr, true, []) ->
-      let label = Label_with_name.create ~label:cnstr.txt ~name_override in
+      let label =
+        Label_with_name.create ~label:cnstr.txt ~name_override ~capitalization
+      in
       let tpl = loc, label in
       tpl :: atoms, structs, `A tpl :: ainhs, sinhs
     | Rtag (cnstr, false, [ tp ]) ->
-      let label = Label_with_name.create ~label:cnstr.txt ~name_override in
+      let label =
+        Label_with_name.create ~label:cnstr.txt ~name_override ~capitalization
+      in
       let loc = tp.ptyp_loc in
       atoms, (loc, label) :: structs, ainhs, `S (loc, label, tp, row_field) :: sinhs
     | Rinherit inh ->
@@ -1023,7 +1100,12 @@ module Str_generate_of_yojson = struct
   ;;
 
   (* Conversion of types *)
-  let rec type_of_yojson ~typevar_handling ?full_type ?(internal = false) typ
+  let rec type_of_yojson
+    ~typevar_handling
+    ~capitalization
+    ?full_type
+    ?(internal = false)
+    typ
     : Fun_or_match.t
     =
     let loc = { typ.ptyp_loc with loc_ghost = true } in
@@ -1036,7 +1118,8 @@ module Str_generate_of_yojson = struct
       (match Ppxlib_jane.Shim.Core_type_desc.of_parsetree typ.ptyp_desc with
        | Ptyp_tuple labeled_tps ->
          (match Ppxlib_jane.as_unlabeled_tuple labeled_tps with
-          | Some tps -> Match (tuple_of_yojson ~typevar_handling (loc, tps))
+          | Some tps ->
+            Match (tuple_of_yojson ~typevar_handling ~capitalization (loc, tps))
           | None ->
             Location.raise_errorf ~loc "Labeled tuples unsupported in [%%of_yojson: ].")
        | Ptyp_var (parm, _) ->
@@ -1050,14 +1133,15 @@ module Str_generate_of_yojson = struct
        | Ptyp_constr (id, args) ->
          let args =
            List.map args ~f:(fun arg ->
-             Fun_or_match.expr ~loc (type_of_yojson ~typevar_handling arg))
+             Fun_or_match.expr ~loc (type_of_yojson ~typevar_handling ~capitalization arg))
          in
          Fun (type_constr_of_yojson ~loc ~internal id args)
        | Ptyp_arrow (_, _, _, _, _) ->
          Fun [%expr Ppx_yojson_conv_lib.Yojson_conv.fun_of_yojson]
        | Ptyp_variant (row_fields, _, _) ->
-         variant_of_yojson ~typevar_handling ?full_type (loc, row_fields)
-       | Ptyp_poly (parms, poly_tp) -> poly_of_yojson ~typevar_handling parms poly_tp
+         variant_of_yojson ~typevar_handling ~capitalization ?full_type (loc, row_fields)
+       | Ptyp_poly (parms, poly_tp) ->
+         poly_of_yojson ~typevar_handling ~capitalization parms poly_tp
        | Ptyp_any _ ->
          (* This case is matched in the outer match *)
          failwith "impossible state"
@@ -1068,8 +1152,8 @@ module Str_generate_of_yojson = struct
            (Ppxlib_jane.Language_feature_name.of_core_type_desc typ))
 
   (* Conversion of tuples *)
-  and tuple_of_yojson ~typevar_handling (loc, tps) =
-    let fps = List.map ~f:(type_of_yojson ~typevar_handling) tps in
+  and tuple_of_yojson ~typevar_handling ~capitalization (loc, tps) =
+    let fps = List.map ~f:(type_of_yojson ~typevar_handling ~capitalization) tps in
     let bindings, patts, vars = Fun_or_match.map_tmp_vars ~loc fps in
     let n = List.length fps in
     [ [%pat? `List [%p plist ~loc patts]]
@@ -1083,9 +1167,16 @@ module Str_generate_of_yojson = struct
     ]
 
   (* Generate code for matching included variant types *)
-  and handle_variant_inh ~typevar_handling full_type ~match_last other_matches inh =
+  and handle_variant_inh
+    ~typevar_handling
+    ~capitalization
+    full_type
+    ~match_last
+    other_matches
+    inh
+    =
     let loc = inh.ptyp_loc in
-    let func_expr = type_of_yojson ~typevar_handling ~internal:true inh in
+    let func_expr = type_of_yojson ~typevar_handling ~capitalization ~internal:true inh in
     let app : Fun_or_match.t =
       let fun_expr = Fun_or_match.expr ~loc func_expr in
       Fun [%expr [%e fun_expr] _yojson]
@@ -1108,7 +1199,14 @@ module Str_generate_of_yojson = struct
     new_other_matches, true
 
   (* Generate code for matching atomic variants *)
-  and mk_variant_match_atom ~typevar_handling loc full_type ~rev_atoms_inhs ~rev_structs =
+  and mk_variant_match_atom
+    ~typevar_handling
+    ~capitalization
+    loc
+    full_type
+    ~rev_atoms_inhs
+    ~rev_structs
+    =
     let coll (other_matches, match_last) = function
       | `A (loc, label) ->
         let new_match =
@@ -1117,7 +1215,13 @@ module Str_generate_of_yojson = struct
         in
         new_match :: other_matches, false
       | `I inh ->
-        handle_variant_inh ~typevar_handling full_type ~match_last other_matches inh
+        handle_variant_inh
+          ~typevar_handling
+          ~capitalization
+          full_type
+          ~match_last
+          other_matches
+          inh
     in
     let other_matches =
       mk_variant_other_matches loc ~rev_els:rev_structs `ptag_takes_args
@@ -1130,7 +1234,7 @@ module Str_generate_of_yojson = struct
   (* Variant conversions *)
 
   (* Match arguments of constructors (variants or sum types) *)
-  and mk_cnstr_args_match ~typevar_handling ~loc ~is_variant label tps =
+  and mk_cnstr_args_match ~typevar_handling ~capitalization ~loc ~is_variant label tps =
     let cnstr_label = Label_with_name.label label in
     let cnstr vars_expr =
       if is_variant
@@ -1138,7 +1242,7 @@ module Str_generate_of_yojson = struct
       else pexp_construct ~loc (Located.lident ~loc cnstr_label) (Some vars_expr)
     in
     let bindings, patts, good_arg_match =
-      let fps = List.map ~f:(type_of_yojson ~typevar_handling) tps in
+      let fps = List.map ~f:(type_of_yojson ~typevar_handling ~capitalization) tps in
       let bindings, patts, vars = Fun_or_match.map_tmp_vars ~loc fps in
       let good_arg_match =
         let vars_expr =
@@ -1170,7 +1274,13 @@ module Str_generate_of_yojson = struct
                 _yojson]]]
 
   (* Generate code for matching structured variants *)
-  and mk_variant_match_struct ~typevar_handling loc full_type ~rev_structs_inhs ~rev_atoms
+  and mk_variant_match_struct
+    ~typevar_handling
+    ~capitalization
+    loc
+    full_type
+    ~rev_structs_inhs
+    ~rev_atoms
     =
     let has_structs_ref = ref false in
     let coll (other_matches, match_last) = function
@@ -1187,6 +1297,7 @@ module Str_generate_of_yojson = struct
         let expr =
           mk_cnstr_args_match
             ~typevar_handling
+            ~capitalization
             ~loc:tp.ptyp_loc
             ~is_variant:true
             label
@@ -1197,7 +1308,13 @@ module Str_generate_of_yojson = struct
         in
         new_match :: other_matches, false
       | `I inh ->
-        handle_variant_inh ~typevar_handling full_type ~match_last other_matches inh
+        handle_variant_inh
+          ~typevar_handling
+          ~capitalization
+          full_type
+          ~match_last
+          other_matches
+          inh
     in
     let other_matches = mk_variant_other_matches loc ~rev_els:rev_atoms `ptag_no_args in
     let match_structs_inhs, match_last =
@@ -1207,17 +1324,27 @@ module Str_generate_of_yojson = struct
 
   (* Generate code for handling atomic and structured variants (i.e. not
      included variant types) *)
-  and handle_variant_tag ~typevar_handling loc full_type row_field_list =
+  and handle_variant_tag ~typevar_handling ~capitalization loc full_type row_field_list =
     let rev_atoms, rev_structs, rev_atoms_inhs, rev_structs_inhs =
-      List.fold_left ~f:(split_row_field ~loc) ~init:([], [], [], []) row_field_list
+      List.fold_left
+        ~f:(split_row_field ~loc ~capitalization)
+        ~init:([], [], [], [])
+        row_field_list
     in
     let match_struct, has_structs =
-      mk_variant_match_struct ~typevar_handling loc full_type ~rev_structs_inhs ~rev_atoms
+      mk_variant_match_struct
+        ~typevar_handling
+        ~capitalization
+        loc
+        full_type
+        ~rev_structs_inhs
+        ~rev_atoms
     in
     let maybe_yojson_args_patt = if has_structs then [%pat? yojson_args] else [%pat? _] in
     [ [%pat? `List [ `String atom ] as _yojson]
       --> mk_variant_match_atom
             ~typevar_handling
+            ~capitalization
             loc
             full_type
             ~rev_atoms_inhs
@@ -1239,7 +1366,7 @@ module Str_generate_of_yojson = struct
     ]
 
   (* Generate matching code for variants *)
-  and variant_of_yojson ~typevar_handling ?full_type (loc, row_fields) =
+  and variant_of_yojson ~typevar_handling ~capitalization ?full_type (loc, row_fields) =
     let is_contained, full_type =
       match full_type with
       | None -> true, ptyp_variant ~loc row_fields Closed None
@@ -1254,7 +1381,7 @@ module Str_generate_of_yojson = struct
               ([%e
                  Fun_or_match.expr
                    ~loc
-                   (type_of_yojson ~typevar_handling ~internal:true inh)]
+                   (type_of_yojson ~typevar_handling ~capitalization ~internal:true inh)]
                  yojson
                 :> [%t replace_variables_by_underscores full_type])]
           in
@@ -1266,14 +1393,20 @@ module Str_generate_of_yojson = struct
               | Rinherit inh -> loop inh t
               | _ ->
                 let rftag_matches =
-                  handle_variant_tag ~typevar_handling loc full_type row_fields
+                  handle_variant_tag
+                    ~typevar_handling
+                    ~capitalization
+                    loc
+                    full_type
+                    row_fields
                 in
                 pexp_match ~loc [%expr yojson] rftag_matches
             in
             pexp_try ~loc call (handle_no_variant_match loc expr)
         in
         [ [%pat? yojson] --> loop inh rest ]
-      | _ :: _ -> handle_variant_tag ~typevar_handling loc full_type row_fields
+      | _ :: _ ->
+        handle_variant_tag ~typevar_handling ~capitalization loc full_type row_fields
       | [] -> assert false
       (* impossible *)
     in
@@ -1289,7 +1422,7 @@ module Str_generate_of_yojson = struct
                 yojson]
     else Match top_match
 
-  and poly_of_yojson ~typevar_handling parms tp =
+  and poly_of_yojson ~typevar_handling ~capitalization parms tp =
     let loc = tp.ptyp_loc in
     let bindings =
       let mk_binding (parm, _) =
@@ -1305,7 +1438,7 @@ module Str_generate_of_yojson = struct
       in
       List.map ~f:mk_binding parms
     in
-    match type_of_yojson ~typevar_handling tp with
+    match type_of_yojson ~typevar_handling ~capitalization tp with
     | Fun fun_expr -> Fun (pexp_let ~loc Nonrecursive bindings fun_expr)
     | Match matchings ->
       Match
@@ -1315,13 +1448,13 @@ module Str_generate_of_yojson = struct
   ;;
 
   (* Generate code for extracting record fields *)
-  let mk_extract_fields ~typevar_handling ~allow_extra_fields (loc, flds) =
+  let mk_extract_fields ~typevar_handling ~capitalization ~allow_extra_fields (loc, flds) =
     let rec loop inits no_args args = function
       | [] -> inits, no_args, args
       | ld :: more_flds ->
         let loc = ld.pld_name.loc in
         let nm = ld.pld_name.txt in
-        let key = Option.value ~default:nm (Attribute.get Attrs.yojson_key ld) in
+        let key = get_label_name ld ~capitalization in
         (match Attrs.Record_field_handler.Of_yojson.create ~loc ld, ld.pld_type with
          | Some (`yojson_option tp), _ | (None | Some (`default _)), tp ->
            let inits = [%expr Ppx_yojson_conv_lib.Option.None] :: inits in
@@ -1329,7 +1462,7 @@ module Str_generate_of_yojson = struct
              Fun_or_match.unroll
                ~loc
                [%expr _field_yojson]
-               (type_of_yojson ~typevar_handling tp)
+               (type_of_yojson ~typevar_handling ~capitalization tp)
            in
            let args =
              (pstring ~loc key
@@ -1437,9 +1570,16 @@ module Str_generate_of_yojson = struct
 
   (* Generate code for converting record fields *)
 
-  let mk_cnv_fields ~typevar_handling ~allow_extra_fields has_poly (loc, flds) ~wrap_expr =
+  let mk_cnv_fields
+    ~typevar_handling
+    ~capitalization
+    ~allow_extra_fields
+    has_poly
+    (loc, flds)
+    ~wrap_expr
+    =
     let expr_ref_inits, _mc_no_args_fields, mc_fields_with_args =
-      mk_extract_fields ~typevar_handling ~allow_extra_fields (loc, flds)
+      mk_extract_fields ~typevar_handling ~capitalization ~allow_extra_fields (loc, flds)
     in
     let field_refs =
       List.map2_exn
@@ -1495,6 +1635,7 @@ module Str_generate_of_yojson = struct
 
   let label_declaration_list_of_yojson
     ~typevar_handling
+    ~capitalization
     ~allow_extra_fields
     loc
     flds
@@ -1502,7 +1643,13 @@ module Str_generate_of_yojson = struct
     =
     let has_poly = is_poly (loc, flds) in
     let cnv_fields =
-      mk_cnv_fields ~typevar_handling ~allow_extra_fields has_poly (loc, flds) ~wrap_expr
+      mk_cnv_fields
+        ~typevar_handling
+        ~capitalization
+        ~allow_extra_fields
+        has_poly
+        (loc, flds)
+        ~wrap_expr
     in
     if has_poly
     then (
@@ -1531,11 +1678,14 @@ module Str_generate_of_yojson = struct
   ;;
 
   (* Generate matching code for records *)
-  let record_of_yojson ~typevar_handling ~allow_extra_fields (loc, flds) : Fun_or_match.t =
+  let record_of_yojson ~typevar_handling ~capitalization ~allow_extra_fields (loc, flds)
+    : Fun_or_match.t
+    =
     Match
       [ [%pat? `Assoc field_yojsons as yojson]
         --> label_declaration_list_of_yojson
               ~typevar_handling
+              ~capitalization
               ~allow_extra_fields
               loc
               flds
@@ -1550,7 +1700,7 @@ module Str_generate_of_yojson = struct
 
   (* Sum type conversions *)
   (* Generate matching code for well-formed Yojsons wrt. sum types *)
-  let mk_good_sum_matches ~typevar_handling (loc, cds) =
+  let mk_good_sum_matches ~typevar_handling ~capitalization (loc, cds) =
     List.map cds ~f:(fun (cd, label) ->
       let cnstr_label = Label_with_name.label label in
       let cnstr_name = Label_with_name.name label in
@@ -1559,6 +1709,7 @@ module Str_generate_of_yojson = struct
         let expr =
           label_declaration_list_of_yojson
             ~typevar_handling
+            ~capitalization
             ~allow_extra_fields:
               (Option.is_some (Attribute.get Attrs.allow_extra_fields_cd cd))
             loc
@@ -1579,7 +1730,13 @@ module Str_generate_of_yojson = struct
         Attrs.fail_if_allow_extra_field_cd ~loc cd;
         [%pat?
           `List (`String ([%p pstring ~loc cnstr_name] as _tag) :: yojson_args) as _yojson]
-        --> mk_cnstr_args_match ~typevar_handling ~loc ~is_variant:false label tps)
+        --> mk_cnstr_args_match
+              ~typevar_handling
+              ~capitalization
+              ~loc
+              ~is_variant:false
+              label
+              tps)
   ;;
 
   (* Generate matching code for malformed Yojsons with good tags
@@ -1597,13 +1754,14 @@ module Str_generate_of_yojson = struct
   ;;
 
   (* Generate matching code for sum types *)
-  let sum_of_yojson ~typevar_handling (loc, alts) : Fun_or_match.t =
+  let sum_of_yojson ~typevar_handling ~capitalization (loc, alts) : Fun_or_match.t =
     let alts =
-      List.map alts ~f:(fun cd -> cd, Label_with_name.of_constructor_declaration cd)
+      List.map alts ~f:(fun cd ->
+        cd, Label_with_name.of_constructor_declaration cd ~capitalization)
     in
     Match
       (List.concat
-         [ mk_good_sum_matches ~typevar_handling (loc, alts)
+         [ mk_good_sum_matches ~typevar_handling ~capitalization (loc, alts)
          ; mk_bad_sum_matches (loc, alts)
          ; [ [%pat? `List (`List _ :: _) as yojson]
              --> [%expr
@@ -1631,7 +1789,7 @@ module Str_generate_of_yojson = struct
 
   (* Generate code from type definitions *)
 
-  let td_of_yojson ~typevar_handling ~loc:_ ~poly ~path ~rec_flag td =
+  let td_of_yojson ~typevar_handling ~capitalization ~loc:_ ~poly ~path ~rec_flag td =
     let td = name_type_params_in_td td in
     let tps = List.map td.ptype_params ~f:get_type_param_name in
     let { ptype_name = { txt = type_name; loc = _ }; ptype_loc = loc; _ } = td in
@@ -1662,10 +1820,11 @@ module Str_generate_of_yojson = struct
         match Ppxlib_jane.Shim.Type_kind.of_parsetree td.ptype_kind with
         | Ptype_variant alts ->
           Attrs.fail_if_allow_extra_field_td ~loc td;
-          sum_of_yojson ~typevar_handling (td.ptype_loc, alts)
+          sum_of_yojson ~typevar_handling ~capitalization (td.ptype_loc, alts)
         | Ptype_record lbls ->
           record_of_yojson
             ~typevar_handling
+            ~capitalization
             ~allow_extra_fields:
               (Option.is_some (Attribute.get Attrs.allow_extra_fields_td td))
             (loc, lbls)
@@ -1681,6 +1840,7 @@ module Str_generate_of_yojson = struct
              type_of_yojson
                ~full_type
                ~typevar_handling
+               ~capitalization
                ~internal:create_internal_function
                ty)
       in
@@ -1761,7 +1921,7 @@ module Str_generate_of_yojson = struct
   ;;
 
   (* Generate code from type definitions *)
-  let tds_of_yojson ~loc ~poly ~path (rec_flag, tds) =
+  let tds_of_yojson ~loc ~poly ~path (rec_flag, tds) capitalization =
     let typevar_handling = `ok in
     let singleton =
       match tds with
@@ -1776,7 +1936,7 @@ module Str_generate_of_yojson = struct
         let bindings =
           List.concat_map tds ~f:(fun td ->
             let internals, externals =
-              td_of_yojson ~typevar_handling ~loc ~poly ~path ~rec_flag td
+              td_of_yojson ~typevar_handling ~capitalization ~loc ~poly ~path ~rec_flag td
             in
             internals @ externals)
         in
@@ -1784,7 +1944,7 @@ module Str_generate_of_yojson = struct
       | Nonrecursive ->
         List.concat_map tds ~f:(fun td ->
           let internals, externals =
-            td_of_yojson ~typevar_handling ~loc ~poly ~path ~rec_flag td
+            td_of_yojson ~typevar_handling ~capitalization ~loc ~poly ~path ~rec_flag td
           in
           pstr_value_list ~loc Nonrecursive internals
           @ pstr_value_list ~loc Nonrecursive externals))
@@ -1792,16 +1952,16 @@ module Str_generate_of_yojson = struct
       let bindings =
         List.concat_map tds ~f:(fun td ->
           let internals, externals =
-            td_of_yojson ~typevar_handling ~poly ~loc ~path ~rec_flag td
+            td_of_yojson ~typevar_handling ~capitalization ~poly ~loc ~path ~rec_flag td
           in
           internals @ externals)
       in
       pstr_value_list ~loc rec_flag bindings)
   ;;
 
-  let type_of_yojson ~typevar_handling ~path ctyp =
+  let type_of_yojson ~typevar_handling ~capitalization ~path ctyp =
     let loc = { ctyp.ptyp_loc with loc_ghost = true } in
-    let fp = type_of_yojson ~typevar_handling ctyp in
+    let fp = type_of_yojson ~typevar_handling ~capitalization ctyp in
     let body =
       match fp with
       | Fun fun_expr -> [%expr [%e fun_expr] yojson]
@@ -1827,7 +1987,10 @@ module Yojson_of = struct
   ;;
 
   let core_type ty =
-    Str_generate_yojson_of.yojson_of_type ~typevar_handling:`disallowed_in_type_expr ty
+    Str_generate_yojson_of.yojson_of_type
+      ~typevar_handling:`disallowed_in_type_expr
+      ~capitalization:None
+      ty
     |> Fun_or_match.expr ~loc:{ ty.ptyp_loc with loc_ghost = true }
   ;;
 
@@ -1845,7 +2008,9 @@ module Of_yojson = struct
   ;;
 
   let core_type =
-    Str_generate_of_yojson.type_of_yojson ~typevar_handling:`disallowed_in_type_expr
+    Str_generate_of_yojson.type_of_yojson
+      ~typevar_handling:`disallowed_in_type_expr
+      ~capitalization:None
   ;;
 
   let sig_type_decl = Sig_generate_of_yojson.mk_sig
