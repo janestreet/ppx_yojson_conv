@@ -234,9 +234,9 @@ let make_type_rigid ~type_name =
 ;;
 
 (* Generates the quantified type [ ! 'a .. 'z . (make_mono_type t ('a .. 'z)) ] or
-   [type a .. z. make_mono_type t (a .. z)] when [use_rigid_variables] is true.
-   Annotation are needed for non regular recursive datatypes and gadt when the return type
-   of constructors are constrained. Unfortunately, putting rigid variables everywhere does
+   [type a .. z. make_mono_type t (a .. z)] when [use_rigid_variables] is true. Annotation
+   are needed for non regular recursive datatypes and gadt when the return type of
+   constructors are constrained. Unfortunately, putting rigid variables everywhere does
    not work because of certains types with constraints. We thus only use rigid variables
    for sum types, which includes all GADTs. *)
 
@@ -501,7 +501,7 @@ module Str_generate_yojson_of = struct
         ppat_alias ~loc (ppat_type ~loc id) (Loc.make "v" ~loc) --> [%expr [%e call] v]
       | Rinherit _ ->
         Location.raise_errorf ~loc "unsupported: yojson_of_variant/Rinherit/non-id"
-      (* impossible?*)
+      (* impossible? *)
       | Rtag (_, false, []) -> assert false
     in
     Match (List.map ~f:item row_fields)
@@ -511,8 +511,8 @@ module Str_generate_yojson_of = struct
     let loc = tp.ptyp_loc in
     match typevar_handling with
     | `disallowed_in_type_expr ->
-      (* Should be impossible because [yojson_of_poly] is only called on polymorphic record
-         fields and record type definitions can't occur in type expressions. *)
+      (* Should be impossible because [yojson_of_poly] is only called on polymorphic
+         record fields and record type definitions can't occur in type expressions. *)
       Location.raise_errorf ~loc "polymorphic type in a type expression"
     | `ok renaming ->
       let bindings =
@@ -1040,8 +1040,8 @@ module Str_generate_of_yojson = struct
     [ [%pat? Ppx_yojson_conv_lib.Yojson_conv_error.No_variant_match] --> expr ]
   ;;
 
-  (* Generate code depending on whether to generate a match for the last
-     case of matching a variant *)
+  (* Generate code depending on whether to generate a match for the last case of matching
+     a variant *)
   let handle_variant_match_last loc ~match_last matches =
     match match_last, matches with
     | true, [ { pc_lhs = _; pc_guard = None; pc_rhs = expr } ]
@@ -1067,9 +1067,9 @@ module Str_generate_of_yojson = struct
     List.fold_left ~f:coll_structs ~init:[ exc_no_variant_match ] rev_els
   ;;
 
-  (* Split the row fields of a variant type into lists of atomic variants,
-     structured variants, atomic variants + included variant types,
-     and structured variants + included variant types. *)
+  (* Split the row fields of a variant type into lists of atomic variants, structured
+     variants, atomic variants + included variant types, and structured variants +
+     included variant types. *)
   let split_row_field ~loc ~capitalization (atoms, structs, ainhs, sinhs) row_field =
     let name_override = Attribute.get Attrs.yojson_polymorphic_variant_name row_field in
     match row_field.prf_desc with
@@ -1322,8 +1322,8 @@ module Str_generate_of_yojson = struct
     in
     handle_variant_match_last loc ~match_last match_structs_inhs, !has_structs_ref
 
-  (* Generate code for handling atomic and structured variants (i.e. not
-     included variant types) *)
+  (* Generate code for handling atomic and structured variants (i.e. not included variant
+     types) *)
   and handle_variant_tag ~typevar_handling ~capitalization loc full_type row_field_list =
     let rev_atoms, rev_structs, rev_atoms_inhs, rev_structs_inhs =
       List.fold_left
@@ -1739,8 +1739,7 @@ module Str_generate_of_yojson = struct
               tps)
   ;;
 
-  (* Generate matching code for malformed Yojsons with good tags
-     wrt. sum types *)
+  (* Generate matching code for malformed Yojsons with good tags wrt. sum types *)
   let mk_bad_sum_matches (loc, cds) =
     List.map cds ~f:(fun (cd, label) ->
       let cnstr_name = Label_with_name.name label in
@@ -1845,8 +1844,8 @@ module Str_generate_of_yojson = struct
                ty)
       in
       match body with
-      (* Prevent violation of value restriction and problems with
-         recursive types by eta-expanding function definitions *)
+      (* Prevent violation of value restriction and problems with recursive types by
+         eta-expanding function definitions *)
       | Fun fun_expr -> [%expr fun t -> [%e eapply ~loc fun_expr [ [%expr t] ]]]
       | Match matchings -> pexp_function ~loc matchings
     in
