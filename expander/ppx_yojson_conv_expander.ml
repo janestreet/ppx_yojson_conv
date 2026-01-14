@@ -58,7 +58,7 @@ module Fun_or_match = struct
   ;;
 end
 
-(* A renaming is a mapping from type variable name to type variable name.
+(*=A renaming is a mapping from type variable name to type variable name.
    In definitions such as:
 
    type 'a t =
