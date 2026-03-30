@@ -681,7 +681,7 @@ module Str_generate_yojson_of = struct
           (fun ~cnv_expr loc yojson_expr ->
             [%expr
               Ppx_yojson_conv_lib.poly_equal ([%e cnv_expr] [%e default]) [%e yojson_expr]])
-      | (`no_arg | `func _ | `compare | `equal) as how ->
+      | (`no_arg | `func _ | `compare _ | `equal _) as how ->
         let equality_f loc =
           match how with
           | `no_arg ->
@@ -696,20 +696,24 @@ module Str_generate_yojson_of = struct
                  - [@yojson_drop_default.yojson] if you want to compare the yojson \
                  representations\n"]]
           | `func f -> f
-          | `compare ->
+          | `compare locality ->
             disallow_type_variables_and_recursive_occurrences
               ~types_being_defined
               ~why:`compare
               ~loc
               tp;
-            [%expr [%compare.equal: [%t tp]]]
-          | `equal ->
+            (match locality with
+             | `local -> [%expr [%compare.equal__local: [%t tp]]]
+             | `global -> [%expr [%compare.equal: [%t tp]]])
+          | `equal locality ->
             disallow_type_variables_and_recursive_occurrences
               ~types_being_defined
               ~why:`equal
               ~loc
               tp;
-            [%expr [%equal: [%t tp]]]
+            (match locality with
+             | `local -> [%expr [%equal__local: [%t tp]]]
+             | `global -> [%expr [%equal: [%t tp]]])
         in
         Inspect_value (fun loc expr -> [%expr [%e equality_f loc] [%e default] [%e expr]])
     in

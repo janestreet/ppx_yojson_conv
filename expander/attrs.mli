@@ -29,7 +29,13 @@ module Record_field_handler : sig
   module Yojson_of : sig
     type t =
       [ common
-      | `drop_default of [ `no_arg | `compare | `equal | `yojson | `func of expression ]
+      | `drop_default of
+        [ `no_arg
+        | `compare of [ `local | `global ]
+        | `equal of [ `local | `global ]
+        | `yojson
+        | `func of expression
+        ]
       | `drop_if of expression
       | `keep
       ]
