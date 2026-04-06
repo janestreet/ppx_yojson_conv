@@ -210,6 +210,8 @@ are several ways to specify the equality function:
       c : u [@default u0] [@yojson_drop_default.equal]; (* uses [%equal: u] *)
       d : u [@default u0] [@yojson_drop_default.yojson]; (* compares yojson representations *)
       e : u [@default u0] [@yojson_drop_default]; (* deprecated. uses polymorphic equality. *)
+      f : u [@default u0] [@yojson_drop_default.compare.local]; (* uses [%compare.equal__local: u] *)
+      g : u [@default u0] [@yojson_drop_default.equal.local]; (* uses [%equal__local: u] *)
     } [@@deriving yojson]
 #+end_src
 

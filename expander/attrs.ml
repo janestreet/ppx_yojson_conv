@@ -17,21 +17,19 @@ let drop_default =
     (fun x -> x)
 ;;
 
-let drop_default_equal =
+let drop_default_comparison ~f ~local =
+  let suffix = if local then ".local" else "" in
   Attribute.declare
-    "yojson.@yojson_drop_default.equal"
+    ("yojson.@yojson_drop_default" ^ "." ^ f ^ suffix)
     Attribute.Context.label_declaration
     Ast_pattern.(pstr nil)
     ()
 ;;
 
-let drop_default_compare =
-  Attribute.declare
-    "yojson.@yojson_drop_default.compare"
-    Attribute.Context.label_declaration
-    Ast_pattern.(pstr nil)
-    ()
-;;
+let drop_default_equal = drop_default_comparison ~f:"equal" ~local:false
+let drop_default_compare = drop_default_comparison ~f:"compare" ~local:false
+let drop_default_equal_local = drop_default_comparison ~f:"equal" ~local:true
+let drop_default_compare_local = drop_default_comparison ~f:"compare" ~local:true
 
 let drop_default_yojson =
   Attribute.declare
@@ -179,7 +177,13 @@ module Record_field_handler = struct
   module Yojson_of = struct
     type t =
       [ common
-      | `drop_default of [ `no_arg | `compare | `equal | `yojson | `func of expression ]
+      | `drop_default of
+        [ `no_arg
+        | `compare of [ `local | `global ]
+        | `equal of [ `local | `global ]
+        | `yojson
+        | `func of expression
+        ]
       | `drop_if of expression
       | `keep
       ]
@@ -190,8 +194,13 @@ module Record_field_handler = struct
         [ get_attribute drop_default ~f:(function
             | None -> `drop_default `no_arg
             | Some e -> `drop_default (`func e))
-        ; get_attribute drop_default_equal ~f:(fun () -> `drop_default `equal)
-        ; get_attribute drop_default_compare ~f:(fun () -> `drop_default `compare)
+        ; get_attribute drop_default_equal ~f:(fun () -> `drop_default (`equal `global))
+        ; get_attribute drop_default_compare ~f:(fun () ->
+            `drop_default (`compare `global))
+        ; get_attribute drop_default_equal_local ~f:(fun () ->
+            `drop_default (`equal `local))
+        ; get_attribute drop_default_compare_local ~f:(fun () ->
+            `drop_default (`compare `local))
         ; get_attribute drop_default_yojson ~f:(fun () -> `drop_default `yojson)
         ; get_attribute drop_if ~f:(fun x -> `drop_if x)
         ]

@@ -866,6 +866,9 @@ module Drop_default = struct
 
   type my_int = int [@@deriving yojson]
 
+  let%template[@mode _ = (local, global)] equal_my_int = equal_int
+  let%template[@mode _ = (local, global)] compare_my_int = compare_int
+
   module Poly = struct
     type nonrec t = t = { a : my_int [@default 2] [@yojson_drop_default ( = )] }
     [@@deriving yojson]
@@ -877,8 +880,6 @@ module Drop_default = struct
   end
 
   module Equal = struct
-    let equal_my_int = equal_int
-
     type nonrec t = t = { a : my_int [@default 2] [@yojson_drop_default.equal] }
     [@@deriving yojson]
 
@@ -889,9 +890,27 @@ module Drop_default = struct
   end
 
   module Compare = struct
-    let compare_my_int = compare_int
-
     type nonrec t = t = { a : my_int [@default 2] [@yojson_drop_default.compare] }
+    [@@deriving yojson]
+
+    let%expect_test _ =
+      test t_of_yojson yojson_of_t;
+      [%expect {| |}]
+    ;;
+  end
+
+  module Equal_local = struct
+    type nonrec t = t = { a : my_int [@default 2] [@yojson_drop_default.equal.local] }
+    [@@deriving yojson]
+
+    let%expect_test _ =
+      test t_of_yojson yojson_of_t;
+      [%expect {| |}]
+    ;;
+  end
+
+  module Compare_local = struct
+    type nonrec t = t = { a : my_int [@default 2] [@yojson_drop_default.compare.local] }
     [@@deriving yojson]
 
     let%expect_test _ =
