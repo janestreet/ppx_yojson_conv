@@ -1514,13 +1514,15 @@ module Exceptions = struct
     ;;
 
     let%expect_test _ =
-      let wrong_arg_type = `List [ `String "C"; `Assoc [ "b", `Int 1 ] ] in
+      let wrong_arg_type =
+        `List [ `String "C"; `Assoc [ "b", `Int 1; "with a space", `Int 1 ] ]
+      in
       require_does_raise (fun () -> t_of_yojson wrong_arg_type);
       [%expect
         {|
         (Of_yojson_error
-         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: extra fields: b"
-         "[\"C\",{\"b\":1}]")
+         "ppx_yojson_test.ml.Exceptions.Variant.t_of_yojson: extra fields: b \"with a space\""
+         "[\"C\",{\"b\":1,\"with a space\":1}]")
         |}]
     ;;
 
@@ -1703,14 +1705,15 @@ module Exceptions = struct
           ; "e", `Int 1
           ; "f", `Int 1
           ; "g", `Int 1
+          ; "with a space", `Int 1
           ]
       in
       require_does_raise (fun () -> t_of_yojson extra_fields);
       [%expect
         {|
         (Of_yojson_error
-         "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: extra fields: g"
-         "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"g\":1}")
+         "ppx_yojson_test.ml.Exceptions.Record.t_of_yojson: extra fields: g \"with a space\""
+         "{\"A\":1,\"b\":\"str\",\"c\":1.0,\"d\":null,\"e\":1,\"f\":1,\"g\":1,\"with a space\":1}")
         |}]
     ;;
   end
