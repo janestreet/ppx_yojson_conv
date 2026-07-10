@@ -830,7 +830,7 @@ module Type_alias = struct
   end
 
   module C : sig
-    type t = int as 'a [@@deriving yojson]
+    type t = int as 'a [@@warning "-unused-type-declaration"] [@@deriving yojson]
   end = struct
     type t = int [@@deriving yojson]
   end
